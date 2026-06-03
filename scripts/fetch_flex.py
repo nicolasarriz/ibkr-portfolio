@@ -127,20 +127,24 @@ def parse(xml_bytes: bytes) -> dict:
         equity = [{"date": dt.date.today().isoformat(), "value": round(nav, 2)}]
 
     # --- P&L ---------------------------------------------------------------
-    total_pnl = 0.0
-    realized = 0.0
-    for row in root.iter("MTMPerformanceSummaryInBase"):
-        total_pnl += f(row, "total")
-    for row in root.iter("StatementOfFundsLine"):
-        if s(row, "activityCode") == "TRADE":
-            realized += f(row, "fifoPnlRealized")
+    mtm_rows = list(root.iter("MTMPerformanceSummaryInBase"))
+    total_pnl = sum(f(row, "total") for row in mtm_rows)
+    # Fallback: use sum of unrealized PnL from open positions (matches IBKR "Unrealized P&L")
+    if total_pnl == 0 and holdings:
+        total_pnl = sum(h["unrealizedPnl"] for h in holdings)
+
+    total_cost = sum((h["avgCost"] * h["quantity"]) for h in holdings)
+    if total_cost:
+        total_pnl_pct = sum(h["unrealizedPnl"] for h in holdings) / total_cost * 100
+    else:
+        total_pnl_pct = 0.0
 
     day_pnl = 0.0
+    day_pnl_pct = 0.0
     if len(equity) >= 2:
         day_pnl = equity[-1]["value"] - equity[-2]["value"]
-    day_pnl_pct = (day_pnl / equity[-2]["value"] * 100) if len(equity) >= 2 and equity[-2]["value"] else 0.0
-
-    total_pnl_pct = (total_pnl / (nav - total_pnl) * 100) if (nav - total_pnl) else 0.0
+        if equity[-2]["value"]:
+            day_pnl_pct = day_pnl / equity[-2]["value"] * 100
 
     # YTD = first equity point of current year vs latest
     ytd_pnl = 0.0
@@ -202,6 +206,48 @@ def iso_date(raw: str) -> str:
     return raw[:10]
 
 
+def merge_history(data: dict, existing_path: str) -> dict:
+    """Append today's snapshot to historical equity / monthly P&L from prior run."""
+    if not os.path.exists(existing_path):
+        return data
+    try:
+        with open(existing_path, "r", encoding="utf-8") as fh:
+            prev = json.load(fh)
+    except Exception:
+        return data
+
+    today = dt.date.today().isoformat()
+
+    # --- Equity history ----------------------------------------------------
+    prev_equity = prev.get("equity") or []
+    by_date = {p["date"]: p["value"] for p in prev_equity}
+    by_date[today] = data["nav"]
+    for p in data.get("equity", []):
+        by_date.setdefault(p["date"], p["value"])
+    merged_equity = [{"date": d, "value": round(v, 2)} for d, v in sorted(by_date.items())]
+    data["equity"] = merged_equity
+
+    # --- Day P&L / YTD from merged equity ----------------------------------
+    if len(merged_equity) >= 2:
+        last_v = merged_equity[-1]["value"]
+        prev_v = merged_equity[-2]["value"]
+        data["dayPnl"] = round(last_v - prev_v, 2)
+        data["dayPnlPct"] = round((last_v - prev_v) / prev_v * 100, 2) if prev_v else 0.0
+    if merged_equity:
+        year = merged_equity[-1]["date"][:4]
+        start = next((p for p in merged_equity if p["date"].startswith(year)), merged_equity[0])
+        ytd = merged_equity[-1]["value"] - start["value"]
+        data["ytdPnl"] = round(ytd, 2)
+        data["ytdPct"] = round(ytd / start["value"] * 100, 2) if start["value"] else 0.0
+
+    # --- Monthly realized P&L (union) --------------------------------------
+    prev_monthly = {m["month"]: m["pnl"] for m in (prev.get("monthlyPnl") or [])}
+    for m in data.get("monthlyPnl", []):
+        prev_monthly[m["month"]] = m["pnl"]
+    data["monthlyPnl"] = [{"month": k, "pnl": v} for k, v in sorted(prev_monthly.items())]
+    return data
+
+
 def main():
     token = os.environ.get("IBKR_FLEX_TOKEN")
     qid = os.environ.get("IBKR_FLEX_QUERY_ID")
@@ -215,10 +261,14 @@ def main():
 
     out = os.path.join(os.path.dirname(__file__), "..", "data", "portfolio.json")
     out = os.path.abspath(out)
+    data = merge_history(data, out)
     os.makedirs(os.path.dirname(out), exist_ok=True)
     with open(out, "w", encoding="utf-8") as fh:
         json.dump(data, fh, indent=2)
-    print(f"Wrote {out} — NAV {data['nav']} {data['baseCurrency']}, {len(data['holdings'])} positions")
+    print(
+        f"Wrote {out} — NAV {data['nav']} {data['baseCurrency']}, "
+        f"{len(data['holdings'])} positions, equity points {len(data.get('equity', []))}"
+    )
 
 
 if __name__ == "__main__":

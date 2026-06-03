@@ -299,14 +299,44 @@ function renderMoversChart(holdings) {
       }],
     },
     options: {
-      ...chartOpts({
-        yFormatter: (v) => fmtUSD(v, 0),
-        tooltipLabel: (ctx) => {
-          const h = data[ctx.dataIndex];
-          return `${sign(h.unrealizedPnl)}${fmtUSD(h.unrealizedPnl, 0)} (${fmtPct(h.unrealizedPnlPct)})`;
-        },
-      }),
+      responsive: true,
+      maintainAspectRatio: false,
       indexAxis: "y",
+      interaction: { intersect: false, mode: "index" },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: "#0b0d12",
+          borderColor: "#1f2430",
+          borderWidth: 1,
+          titleColor: COLORS.text,
+          bodyColor: COLORS.text,
+          padding: 10,
+          displayColors: false,
+          callbacks: {
+            label: (ctx) => {
+              const h = data[ctx.dataIndex];
+              return `${sign(h.unrealizedPnl)}${fmtUSD(h.unrealizedPnl, 0)} (${fmtPct(h.unrealizedPnlPct)})`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          grid: { color: COLORS.grid, drawTicks: false },
+          ticks: { color: COLORS.textMute, callback: (v) => fmtUSD(v, 0), font: { size: 10 } },
+          border: { display: false },
+        },
+        y: {
+          grid: { display: false },
+          ticks: {
+            color: COLORS.text,
+            font: { size: 11, family: "Inter", weight: "500" },
+            padding: 4,
+          },
+          border: { display: false },
+        },
+      },
     },
   });
 }
