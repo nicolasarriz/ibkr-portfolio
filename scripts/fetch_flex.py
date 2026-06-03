@@ -78,6 +78,65 @@ def s(node, attr, default=""):
     return node.attrib.get(attr, default) or default
 
 
+SECTOR_MAP = {
+    # Technology
+    "AAPL": "Technology", "MSFT": "Technology", "NVDA": "Technology", "AMD": "Technology",
+    "PLTR": "Technology", "TSM": "Technology", "ASML": "Technology", "ORCL": "Technology",
+    "CRM": "Technology", "ADBE": "Technology", "AVGO": "Technology", "INTC": "Technology",
+    "CSCO": "Technology", "IBM": "Technology",
+    # Communication
+    "GOOGL": "Communication Services", "GOOG": "Communication Services",
+    "META": "Communication Services", "NFLX": "Communication Services",
+    "DIS": "Communication Services", "VZ": "Communication Services",
+    # Financials
+    "JPM": "Financials", "BAC": "Financials", "WFC": "Financials", "GS": "Financials",
+    "MS": "Financials", "C": "Financials", "BRK.B": "Financials", "BRK.A": "Financials",
+    "V": "Financials", "MA": "Financials", "AXP": "Financials",
+    # Consumer
+    "AMZN": "Consumer Discretionary", "TSLA": "Consumer Discretionary",
+    "HD": "Consumer Discretionary", "MCD": "Consumer Discretionary",
+    "NKE": "Consumer Discretionary", "SBUX": "Consumer Discretionary",
+    "WMT": "Consumer Staples", "COST": "Consumer Staples", "KO": "Consumer Staples",
+    "PG": "Consumer Staples", "PEP": "Consumer Staples",
+    # Healthcare
+    "UNH": "Healthcare", "JNJ": "Healthcare", "LLY": "Healthcare", "PFE": "Healthcare",
+    "MRK": "Healthcare", "ABBV": "Healthcare", "TMO": "Healthcare", "ABT": "Healthcare",
+    # Industrials / Energy / Materials
+    "BA": "Industrials", "CAT": "Industrials", "GE": "Industrials", "HON": "Industrials",
+    "XOM": "Energy", "CVX": "Energy", "COP": "Energy", "OXY": "Energy",
+    # Broad ETFs
+    "QQQ": "US Large Cap ETF", "VOO": "US Large Cap ETF", "SPY": "US Large Cap ETF",
+    "DIA": "US Large Cap ETF", "IVV": "US Large Cap ETF", "VTI": "US Total Market ETF",
+    "IWM": "US Small Cap ETF",
+    # Thematic ETFs
+    "MAGS": "Mega Cap Tech ETF", "IGM": "Tech Sector ETF", "XLK": "Tech Sector ETF",
+    "SMH": "Semiconductor ETF", "SOXX": "Semiconductor ETF",
+    "XLF": "Financials ETF", "XLE": "Energy ETF", "XLV": "Healthcare ETF",
+    # Bonds / commodities / international
+    "TLT": "Fixed Income", "AGG": "Fixed Income", "BND": "Fixed Income", "IEF": "Fixed Income",
+    "GLD": "Commodities", "SLV": "Commodities", "USO": "Commodities",
+    "VWO": "Emerging Markets", "EEM": "Emerging Markets",
+    "VEA": "Developed Markets ex-US", "EFA": "Developed Markets ex-US",
+}
+
+
+def detect_asset_class(asset_cat: str, sub_cat: str) -> str:
+    if (sub_cat or "").upper() in ("ETF", "FUND"):
+        return "ETF"
+    return map_asset_class(asset_cat)
+
+
+def detect_sector(symbol: str, sub_cat: str, asset_class: str) -> str:
+    if symbol in SECTOR_MAP:
+        return SECTOR_MAP[symbol]
+    if asset_class == "ETF":
+        return "Other ETF"
+    sub = (sub_cat or "").strip()
+    if sub and sub.upper() not in ("COMMON", "ETF", "FUND"):
+        return sub.title()
+    return "Other"
+
+
 def parse(xml_bytes: bytes) -> dict:
     root = ET.fromstring(xml_bytes)
 
@@ -92,11 +151,14 @@ def parse(xml_bytes: bytes) -> dict:
         mv = f(p, "positionValue") or qty * last
         u_pnl = f(p, "fifoPnlUnrealized")
         u_pnl_pct = ((last / avg_cost) - 1) * 100 if avg_cost else 0.0
+        symbol = s(p, "symbol")
+        sub_cat = s(p, "subCategory")
+        asset_class = detect_asset_class(s(p, "assetCategory"), sub_cat)
         holdings.append({
-            "symbol": s(p, "symbol"),
-            "name": s(p, "description") or s(p, "symbol"),
-            "assetClass": map_asset_class(s(p, "assetCategory")),
-            "sector": s(p, "subCategory") or "Other",
+            "symbol": symbol,
+            "name": s(p, "description") or symbol,
+            "assetClass": asset_class,
+            "sector": detect_sector(symbol, sub_cat, asset_class),
             "quantity": qty,
             "avgCost": round(avg_cost, 4),
             "lastPrice": round(last, 4),
