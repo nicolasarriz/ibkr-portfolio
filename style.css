@@ -114,6 +114,24 @@ body {
   .grid:first-of-type { grid-template-columns: 2fr 1fr; }
 }
 
+/* Equity controls (date picker + range toggle) */
+.equity-controls { display: inline-flex; gap: 8px; align-items: center; }
+#from-date {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 8px;
+  padding: 5px 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+  cursor: pointer;
+  color-scheme: dark;
+  outline: none;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+#from-date:hover, #from-date:focus { color: var(--text); border-color: var(--accent); }
+#from-date::-webkit-calendar-picker-indicator { filter: invert(0.6); cursor: pointer; }
+
 /* Range toggle */
 .range-toggle { display: inline-flex; gap: 4px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 3px; }
 .range-toggle button {

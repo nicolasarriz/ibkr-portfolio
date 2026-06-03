@@ -35,6 +35,7 @@ const sign = (v) => (v > 0 ? "+" : "");
 let state = {
   data: null,
   range: "YTD",
+  fromDate: null,
   allocMode: "asset",
   sort: { key: "marketValue", dir: "desc" },
   charts: {},
@@ -62,6 +63,13 @@ function render() {
   const updated = new Date(d.lastUpdated || Date.now());
   document.getElementById("last-updated").textContent =
     "Updated " + updated.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
+
+  // Bound the from-date input to available equity data
+  const fromInput = document.getElementById("from-date");
+  if (d.equity?.length) {
+    fromInput.min = d.equity[0].date;
+    fromInput.max = d.equity[d.equity.length - 1].date;
+  }
 
   renderKPIs(d);
   renderEquityChart();
@@ -99,8 +107,12 @@ function renderKPIs(d) {
   ytdSub.className = "kpi-sub " + cls(d.ytdPnl);
 }
 
-function filterEquityByRange(equity, range) {
+function filterEquityByRange(equity, range, fromDate) {
   if (!equity?.length) return [];
+  if (fromDate) {
+    const from = new Date(fromDate);
+    return equity.filter((p) => new Date(p.date) >= from);
+  }
   if (range === "ALL") return equity;
   const last = new Date(equity[equity.length - 1].date);
   let from;
@@ -119,7 +131,7 @@ function filterEquityByRange(equity, range) {
 }
 
 function renderEquityChart() {
-  const data = filterEquityByRange(state.data.equity || [], state.range);
+  const data = filterEquityByRange(state.data.equity || [], state.range, state.fromDate);
   const ctx = document.getElementById("equityChart");
   if (state.charts.equity) state.charts.equity.destroy();
 
@@ -384,12 +396,26 @@ function chartOpts({ yFormatter, xTimeAxis = false, tooltipLabel } = {}) {
   };
 }
 
-// Range toggle
+// Range toggle (clears custom from-date)
 document.getElementById("range-toggle").addEventListener("click", (e) => {
   const btn = e.target.closest("button[data-range]");
   if (!btn) return;
   state.range = btn.dataset.range;
+  state.fromDate = null;
+  document.getElementById("from-date").value = "";
   document.querySelectorAll("#range-toggle button").forEach((b) => b.classList.toggle("active", b === btn));
+  renderEquityChart();
+});
+
+// Custom from-date picker (overrides range buttons)
+document.getElementById("from-date").addEventListener("change", (e) => {
+  state.fromDate = e.target.value || null;
+  if (state.fromDate) {
+    document.querySelectorAll("#range-toggle button").forEach((b) => b.classList.remove("active"));
+  } else {
+    const activeBtn = document.querySelector(`#range-toggle button[data-range="${state.range}"]`);
+    if (activeBtn) activeBtn.classList.add("active");
+  }
   renderEquityChart();
 });
 

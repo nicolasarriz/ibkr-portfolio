@@ -54,12 +54,15 @@
     <div class="card chart-card span-2">
       <div class="card-head">
         <h2>Equity Curve</h2>
-        <div class="range-toggle" id="range-toggle">
-          <button data-range="1M">1M</button>
-          <button data-range="3M">3M</button>
-          <button data-range="6M">6M</button>
-          <button data-range="YTD" class="active">YTD</button>
-          <button data-range="ALL">ALL</button>
+        <div class="equity-controls">
+          <input type="date" id="from-date" title="Show from date" />
+          <div class="range-toggle" id="range-toggle">
+            <button data-range="1M">1M</button>
+            <button data-range="3M">3M</button>
+            <button data-range="6M">6M</button>
+            <button data-range="YTD" class="active">YTD</button>
+            <button data-range="ALL">ALL</button>
+          </div>
         </div>
       </div>
       <div class="chart-wrap">
