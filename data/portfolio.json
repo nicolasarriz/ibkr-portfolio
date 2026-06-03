@@ -1,10 +1,10 @@
 {
-  "lastUpdated": "2026-06-03T20:05:06Z",
+  "lastUpdated": "2026-06-03T20:41:08Z",
   "baseCurrency": "USD",
   "nav": 4852.52,
   "cash": 0.0,
-  "totalPnl": 0.0,
-  "totalPnlPct": 0.0,
+  "totalPnl": 693.11,
+  "totalPnlPct": 16.66,
   "dayPnl": 0.0,
   "dayPnlPct": 0.0,
   "ytdPnl": 0.0,
@@ -14,7 +14,7 @@
       "symbol": "GOOGL",
       "name": "ALPHABET INC-CL A",
       "assetClass": "Equity",
-      "sector": "COMMON",
+      "sector": "Communication Services",
       "quantity": 2.0,
       "avgCost": 293.98,
       "lastPrice": 361.85,
@@ -25,8 +25,8 @@
     {
       "symbol": "IGM",
       "name": "ISHARES EXPANDED TECH SECTOR",
-      "assetClass": "Equity",
-      "sector": "ETF",
+      "assetClass": "ETF",
+      "sector": "Tech Sector ETF",
       "quantity": 1.0,
       "avgCost": 128.455,
       "lastPrice": 170.99,
@@ -38,7 +38,7 @@
       "symbol": "JPM",
       "name": "JPMORGAN CHASE & CO",
       "assetClass": "Equity",
-      "sector": "COMMON",
+      "sector": "Financials",
       "quantity": 2.0,
       "avgCost": 295.28,
       "lastPrice": 300.96,
@@ -49,8 +49,8 @@
     {
       "symbol": "MAGS",
       "name": "ROUNDHILL MAGNIFICENT SEVEN",
-      "assetClass": "Equity",
-      "sector": "ETF",
+      "assetClass": "ETF",
+      "sector": "Mega Cap Tech ETF",
       "quantity": 4.0,
       "avgCost": 60.555,
       "lastPrice": 69.17,
@@ -62,7 +62,7 @@
       "symbol": "PLTR",
       "name": "PALANTIR TECHNOLOGIES INC-A",
       "assetClass": "Equity",
-      "sector": "COMMON",
+      "sector": "Technology",
       "quantity": 2.0,
       "avgCost": 147.54,
       "lastPrice": 152.17,
@@ -73,8 +73,8 @@
     {
       "symbol": "QQQ",
       "name": "INVESCO QQQ TRUST SERIES 1",
-      "assetClass": "Equity",
-      "sector": "ETF",
+      "assetClass": "ETF",
+      "sector": "US Large Cap ETF",
       "quantity": 1.0,
       "avgCost": 575.26,
       "lastPrice": 746.16,
@@ -85,8 +85,8 @@
     {
       "symbol": "SMH",
       "name": "VANECK SEMICONDUCTOR ETF",
-      "assetClass": "Equity",
-      "sector": "ETF",
+      "assetClass": "ETF",
+      "sector": "Semiconductor ETF",
       "quantity": 1.0,
       "avgCost": 542.34,
       "lastPrice": 632.21,
@@ -97,8 +97,8 @@
     {
       "symbol": "VOO",
       "name": "VANGUARD S&P 500 ETF",
-      "assetClass": "Equity",
-      "sector": "ETF",
+      "assetClass": "ETF",
+      "sector": "US Large Cap ETF",
       "quantity": 2.0,
       "avgCost": 598.765,
       "lastPrice": 698.26,
@@ -113,5 +113,14 @@
       "value": 4852.52
     }
   ],
-  "monthlyPnl": []
+  "monthlyPnl": [
+    {
+      "month": "2026-04",
+      "pnl": 18.67
+    },
+    {
+      "month": "2026-05",
+      "pnl": 73.13
+    }
+  ]
 }
