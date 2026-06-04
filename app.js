@@ -16,18 +16,10 @@ const PALETTE = [
   "#fb923c", "#14b8a6", "#f472b6", "#60a5fa",
 ];
 
-const fmtUSD = (v, digits = 2) =>
-  (v < 0 ? "-" : "") +
-  "$" +
-  Math.abs(v).toLocaleString("en-US", {
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
-  });
-
 const fmtPct = (v, digits = 2) => `${v >= 0 ? "+" : ""}${v.toFixed(digits)}%`;
 
-const fmtQty = (v) =>
-  Number.isInteger(v) ? v.toLocaleString("en-US") : v.toLocaleString("en-US", { maximumFractionDigits: 4 });
+const fmtIndex = (v, digits = 2) =>
+  v.toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits });
 
 const cls = (v) => (v > 0 ? "pos" : v < 0 ? "neg" : "muted");
 const sign = (v) => (v > 0 ? "+" : "");
@@ -37,7 +29,7 @@ let state = {
   range: "YTD",
   fromDate: null,
   allocMode: "asset",
-  sort: { key: "marketValue", dir: "desc" },
+  sort: { key: "weight", dir: "desc" },
   charts: {},
 };
 
@@ -50,7 +42,7 @@ async function loadData() {
     console.error("Failed to load portfolio data:", err);
     document.getElementById("last-updated").textContent = "Error loading data";
     document.getElementById("holdings-body").innerHTML =
-      `<tr><td colspan="9" class="muted center">Unable to load portfolio data. Check that data/portfolio.json exists.</td></tr>`;
+      `<tr><td colspan="6" class="muted center">Unable to load portfolio data. Check that data/portfolio.json exists.</td></tr>`;
     return;
   }
   render();
@@ -72,39 +64,43 @@ function render() {
   }
 
   renderKPIs(d);
+  renderRisk(d.risk || {});
   renderEquityChart();
   renderAllocChart();
   renderHoldings();
-  renderMonthlyChart(d.monthlyPnl || []);
+  renderMonthlyChart(d.monthly || []);
   renderMoversChart(d.holdings || []);
 }
 
 function renderKPIs(d) {
-  const navEl = document.getElementById("kpi-nav");
-  const navSub = document.getElementById("kpi-nav-sub");
-  navEl.textContent = fmtUSD(d.nav, 0);
-  navSub.textContent = `Cash ${fmtUSD(d.cash, 0)}`;
+  const idxEl = document.getElementById("kpi-index");
+  idxEl.textContent = fmtIndex(d.index ?? 100, 1);
 
-  const pnlEl = document.getElementById("kpi-pnl");
-  const pnlSub = document.getElementById("kpi-pnl-sub");
-  pnlEl.textContent = `${sign(d.totalPnl)}${fmtUSD(d.totalPnl, 0)}`;
-  pnlEl.className = "kpi-value " + cls(d.totalPnl);
-  pnlSub.textContent = fmtPct(d.totalPnlPct);
-  pnlSub.className = "kpi-sub " + cls(d.totalPnlPct);
+  const totalEl = document.getElementById("kpi-total");
+  totalEl.textContent = fmtPct(d.totalReturnPct);
+  totalEl.className = "kpi-value " + cls(d.totalReturnPct);
 
   const dayEl = document.getElementById("kpi-day");
-  const daySub = document.getElementById("kpi-day-sub");
-  dayEl.textContent = `${sign(d.dayPnl)}${fmtUSD(d.dayPnl, 0)}`;
-  dayEl.className = "kpi-value " + cls(d.dayPnl);
-  daySub.textContent = fmtPct(d.dayPnlPct);
-  daySub.className = "kpi-sub " + cls(d.dayPnlPct);
+  dayEl.textContent = fmtPct(d.dayReturnPct);
+  dayEl.className = "kpi-value " + cls(d.dayReturnPct);
 
   const ytdEl = document.getElementById("kpi-ytd");
-  const ytdSub = document.getElementById("kpi-ytd-sub");
-  ytdEl.textContent = fmtPct(d.ytdPct);
-  ytdEl.className = "kpi-value " + cls(d.ytdPct);
-  ytdSub.textContent = `${sign(d.ytdPnl)}${fmtUSD(d.ytdPnl, 0)}`;
-  ytdSub.className = "kpi-sub " + cls(d.ytdPnl);
+  ytdEl.textContent = fmtPct(d.ytdReturnPct);
+  ytdEl.className = "kpi-value " + cls(d.ytdReturnPct);
+}
+
+function renderRisk(r) {
+  const mdd = document.getElementById("risk-mdd");
+  mdd.textContent = r.maxDrawdownPct == null ? "N/A" : fmtPct(r.maxDrawdownPct);
+  mdd.className = "kpi-value " + (r.maxDrawdownPct == null ? "muted" : cls(r.maxDrawdownPct));
+
+  const vol = document.getElementById("risk-vol");
+  vol.textContent = r.volatilityPct == null ? "N/A" : `${r.volatilityPct.toFixed(2)}%`;
+  vol.className = "kpi-value" + (r.volatilityPct == null ? " muted" : "");
+
+  const sharpe = document.getElementById("risk-sharpe");
+  sharpe.textContent = r.sharpe == null ? "N/A" : r.sharpe.toFixed(2);
+  sharpe.className = "kpi-value " + (r.sharpe == null ? "muted" : cls(r.sharpe));
 }
 
 function filterEquityByRange(equity, range, fromDate) {
@@ -136,7 +132,9 @@ function renderEquityChart() {
   if (state.charts.equity) state.charts.equity.destroy();
 
   const labels = data.map((p) => p.date);
-  const values = data.map((p) => p.value);
+  // Re-base to 100 at the start of the selected period (indexed performance)
+  const base = data[0]?.index || 100;
+  const values = data.map((p) => (base ? (p.index / base) * 100 : 100));
   const first = values[0] || 0;
   const last = values[values.length - 1] || 0;
   const up = last >= first;
@@ -151,7 +149,7 @@ function renderEquityChart() {
     data: {
       labels,
       datasets: [{
-        label: "NAV",
+        label: "Portfolio Index",
         data: values,
         borderColor: lineColor,
         backgroundColor: grad,
@@ -165,9 +163,13 @@ function renderEquityChart() {
       }],
     },
     options: chartOpts({
-      yFormatter: (v) => fmtUSD(v, 0),
+      yTitle: "Portfolio Index",
+      yFormatter: (v) => fmtIndex(v, 0),
       xTimeAxis: true,
-      tooltipLabel: (ctx) => `NAV: ${fmtUSD(ctx.parsed.y, 2)}`,
+      tooltipLabel: (ctx) => {
+        const ret = ctx.parsed.y - 100;
+        return `Index ${fmtIndex(ctx.parsed.y, 2)} (${fmtPct(ret)})`;
+      },
     }),
   });
 }
@@ -176,7 +178,7 @@ function aggregateAlloc(holdings, mode) {
   const map = new Map();
   for (const h of holdings) {
     const key = (mode === "sector" ? h.sector : h.assetClass) || "Other";
-    map.set(key, (map.get(key) || 0) + h.marketValue);
+    map.set(key, (map.get(key) || 0) + (h.weight || 0));
   }
   const total = [...map.values()].reduce((a, b) => a + b, 0);
   const arr = [...map.entries()]
@@ -223,7 +225,7 @@ function renderAllocChart() {
               const v = c.parsed;
               const tot = c.dataset.data.reduce((a, b) => a + b, 0);
               const pct = tot ? (v / tot) * 100 : 0;
-              return `${c.label}: ${fmtUSD(v, 0)} (${pct.toFixed(1)}%)`;
+              return `${c.label}: ${pct.toFixed(1)}%`;
             },
           },
         },
@@ -234,11 +236,7 @@ function renderAllocChart() {
 
 function renderHoldings() {
   const tbody = document.getElementById("holdings-body");
-  const total = (state.data.holdings || []).reduce((a, h) => a + h.marketValue, 0);
-  const rows = [...(state.data.holdings || [])].map((h) => ({
-    ...h,
-    weight: total ? (h.marketValue / total) * 100 : 0,
-  }));
+  const rows = [...(state.data.holdings || [])];
 
   rows.sort((a, b) => {
     const { key, dir } = state.sort;
@@ -248,7 +246,7 @@ function renderHoldings() {
   });
 
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="9" class="muted center">No open positions.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="muted center">No open positions.</td></tr>`;
     return;
   }
 
@@ -256,13 +254,10 @@ function renderHoldings() {
     <tr>
       <td class="sym">${h.symbol}</td>
       <td class="name">${h.name || ""}</td>
-      <td class="num">${fmtQty(h.quantity)}</td>
-      <td class="num">${fmtUSD(h.avgCost, 2)}</td>
-      <td class="num">${fmtUSD(h.lastPrice, 2)}</td>
-      <td class="num">${fmtUSD(h.marketValue, 0)}</td>
-      <td class="num ${cls(h.unrealizedPnl)}">${sign(h.unrealizedPnl)}${fmtUSD(h.unrealizedPnl, 0)}</td>
+      <td>${h.assetClass || ""}</td>
+      <td class="muted">${h.sector || ""}</td>
       <td class="num ${cls(h.unrealizedPnlPct)}">${fmtPct(h.unrealizedPnlPct)}</td>
-      <td class="num">${h.weight.toFixed(1)}%</td>
+      <td class="num">${(h.weight ?? 0).toFixed(1)}%</td>
     </tr>
   `).join("");
 }
@@ -276,16 +271,16 @@ function renderMonthlyChart(monthly) {
     data: {
       labels: monthly.map((m) => m.month),
       datasets: [{
-        label: "Realized P&L",
-        data: monthly.map((m) => m.pnl),
-        backgroundColor: monthly.map((m) => (m.pnl >= 0 ? "rgba(46,204,113,0.75)" : "rgba(255,93,93,0.75)")),
+        label: "Realized Return",
+        data: monthly.map((m) => m.returnPct),
+        backgroundColor: monthly.map((m) => (m.returnPct >= 0 ? "rgba(46,204,113,0.75)" : "rgba(255,93,93,0.75)")),
         borderRadius: 4,
         borderSkipped: false,
       }],
     },
     options: chartOpts({
-      yFormatter: (v) => fmtUSD(v, 0),
-      tooltipLabel: (ctx) => `${sign(ctx.parsed.y)}${fmtUSD(ctx.parsed.y, 2)}`,
+      yFormatter: (v) => `${v}%`,
+      tooltipLabel: (ctx) => fmtPct(ctx.parsed.y),
     }),
   });
 }
@@ -294,7 +289,7 @@ function renderMoversChart(holdings) {
   const ctx = document.getElementById("moversChart");
   if (state.charts.movers) state.charts.movers.destroy();
 
-  const sorted = [...holdings].sort((a, b) => b.unrealizedPnl - a.unrealizedPnl);
+  const sorted = [...holdings].sort((a, b) => b.unrealizedPnlPct - a.unrealizedPnlPct);
   const top = sorted.slice(0, 5);
   const bot = sorted.slice(-5).reverse();
   const data = [...top, ...bot].filter((v, i, arr) => arr.findIndex((x) => x.symbol === v.symbol) === i);
@@ -304,8 +299,8 @@ function renderMoversChart(holdings) {
     data: {
       labels: data.map((d) => d.symbol),
       datasets: [{
-        data: data.map((d) => d.unrealizedPnl),
-        backgroundColor: data.map((d) => (d.unrealizedPnl >= 0 ? "rgba(46,204,113,0.75)" : "rgba(255,93,93,0.75)")),
+        data: data.map((d) => d.unrealizedPnlPct),
+        backgroundColor: data.map((d) => (d.unrealizedPnlPct >= 0 ? "rgba(46,204,113,0.75)" : "rgba(255,93,93,0.75)")),
         borderRadius: 4,
         borderSkipped: false,
       }],
@@ -328,7 +323,7 @@ function renderMoversChart(holdings) {
           callbacks: {
             label: (ctx) => {
               const h = data[ctx.dataIndex];
-              return `${sign(h.unrealizedPnl)}${fmtUSD(h.unrealizedPnl, 0)} (${fmtPct(h.unrealizedPnlPct)})`;
+              return fmtPct(h.unrealizedPnlPct);
             },
           },
         },
@@ -336,7 +331,7 @@ function renderMoversChart(holdings) {
       scales: {
         x: {
           grid: { color: COLORS.grid, drawTicks: false },
-          ticks: { color: COLORS.textMute, callback: (v) => fmtUSD(v, 0), font: { size: 10 } },
+          ticks: { color: COLORS.textMute, callback: (v) => `${v}%`, font: { size: 10 } },
           border: { display: false },
         },
         y: {
@@ -353,7 +348,7 @@ function renderMoversChart(holdings) {
   });
 }
 
-function chartOpts({ yFormatter, xTimeAxis = false, tooltipLabel } = {}) {
+function chartOpts({ yFormatter, yTitle, xTimeAxis = false, tooltipLabel } = {}) {
   return {
     responsive: true,
     maintainAspectRatio: false,
@@ -385,6 +380,9 @@ function chartOpts({ yFormatter, xTimeAxis = false, tooltipLabel } = {}) {
       },
       y: {
         grid: { color: COLORS.grid, drawTicks: false },
+        title: yTitle
+          ? { display: true, text: yTitle, color: COLORS.textMute, font: { size: 10 } }
+          : { display: false },
         ticks: {
           color: COLORS.textMute,
           callback: (v) => (yFormatter ? yFormatter(v) : v),
