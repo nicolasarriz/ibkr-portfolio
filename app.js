@@ -16,6 +16,11 @@ const PALETTE = [
   "#fb923c", "#14b8a6", "#f472b6", "#60a5fa",
 ];
 
+// Minimum daily returns required before a time-series metric is shown
+const MIN_RETURNS = 3;
+const TRADING_DAYS = 252;
+const DASH = "—";
+
 const fmtPct = (v, digits = 2) => `${v >= 0 ? "+" : ""}${v.toFixed(digits)}%`;
 
 const fmtIndex = (v, digits = 2) =>
@@ -23,6 +28,35 @@ const fmtIndex = (v, digits = 2) =>
 
 const cls = (v) => (v > 0 ? "pos" : v < 0 ? "neg" : "muted");
 const sign = (v) => (v > 0 ? "+" : "");
+
+// Map of ticker -> investment themes it contributes exposure to.
+// Used to derive thematic exposure (% of book) the way IBKR PortfolioAnalyst groups holdings.
+const THEME_MAP = {
+  GOOGL: ["Artificial Intelligence", "Generative AI & LLMs", "Mega-Cap Tech"],
+  GOOG: ["Artificial Intelligence", "Generative AI & LLMs", "Mega-Cap Tech"],
+  NVDA: ["Artificial Intelligence", "Semiconductors", "AI Inference"],
+  AMD: ["Artificial Intelligence", "Semiconductors", "AI Inference"],
+  PLTR: ["Artificial Intelligence", "Generative AI & LLMs", "Cloud & Software"],
+  MSFT: ["Artificial Intelligence", "Generative AI & LLMs", "Cloud & Software", "Mega-Cap Tech"],
+  AAPL: ["Mega-Cap Tech"],
+  META: ["Artificial Intelligence", "Mega-Cap Tech"],
+  AMZN: ["Artificial Intelligence", "Cloud & Software", "Mega-Cap Tech"],
+  SMH: ["Semiconductors", "AI Inference", "Artificial Intelligence"],
+  SOXX: ["Semiconductors", "AI Inference", "Artificial Intelligence"],
+  IGM: ["Cloud & Software", "Artificial Intelligence"],
+  XLK: ["Cloud & Software", "Artificial Intelligence"],
+  MAGS: ["Mega-Cap Tech", "Artificial Intelligence", "Generative AI & LLMs"],
+  QQQ: ["Broad US Equity", "Mega-Cap Tech", "Artificial Intelligence"],
+  VOO: ["Broad US Equity"],
+  SPY: ["Broad US Equity"],
+  IVV: ["Broad US Equity"],
+  VTI: ["Broad US Equity"],
+  JPM: ["Financials"],
+  BAC: ["Financials"],
+  GS: ["Financials"],
+  V: ["Financials", "Fintech"],
+  MA: ["Financials", "Fintech"],
+};
 
 let state = {
   data: null,
@@ -64,12 +98,14 @@ function render() {
   }
 
   renderKPIs(d);
-  renderRisk(d.risk || {});
   renderEquityChart();
   renderAllocChart();
+  renderChangeInIndex(d);
+  renderRiskMeasures(d);
+  renderThemes(d);
   renderHoldings();
+  renderMovers(d);
   renderMonthlyChart(d.monthly || []);
-  renderMoversChart(d.holdings || []);
 }
 
 function renderKPIs(d) {
@@ -89,18 +125,143 @@ function renderKPIs(d) {
   ytdEl.className = "kpi-value " + cls(d.ytdReturnPct);
 }
 
-function renderRisk(r) {
-  const mdd = document.getElementById("risk-mdd");
-  mdd.textContent = r.maxDrawdownPct == null ? "N/A" : fmtPct(r.maxDrawdownPct);
-  mdd.className = "kpi-value " + (r.maxDrawdownPct == null ? "muted" : cls(r.maxDrawdownPct));
+// ---- Daily returns + risk math (from the index series) ------------------
+function dailyReturns(equity) {
+  const out = [];
+  for (let i = 1; i < equity.length; i++) {
+    const prev = equity[i - 1].index;
+    if (prev) out.push(equity[i].index / prev - 1);
+  }
+  return out;
+}
 
-  const vol = document.getElementById("risk-vol");
-  vol.textContent = r.volatilityPct == null ? "N/A" : `${r.volatilityPct.toFixed(2)}%`;
-  vol.className = "kpi-value" + (r.volatilityPct == null ? " muted" : "");
+function mean(a) {
+  return a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0;
+}
 
-  const sharpe = document.getElementById("risk-sharpe");
-  sharpe.textContent = r.sharpe == null ? "N/A" : r.sharpe.toFixed(2);
-  sharpe.className = "kpi-value " + (r.sharpe == null ? "muted" : cls(r.sharpe));
+function stddev(a) {
+  if (a.length < 2) return 0;
+  const m = mean(a);
+  return Math.sqrt(a.reduce((s, x) => s + (x - m) ** 2, 0) / a.length);
+}
+
+function maxDrawdown(equity) {
+  let peak = -Infinity, mdd = 0;
+  for (const p of equity) {
+    if (p.index > peak) peak = p.index;
+    if (peak > 0) mdd = Math.max(mdd, (peak - p.index) / peak);
+  }
+  return mdd; // positive fraction
+}
+
+function computeRisk(equity) {
+  const r = dailyReturns(equity || []);
+  if (r.length < MIN_RETURNS) return { ready: false, n: r.length };
+  const m = mean(r);
+  const sd = stddev(r);
+  const downsideDev = Math.sqrt(r.map((x) => Math.min(x, 0) ** 2).reduce((a, b) => a + b, 0) / r.length);
+  const vol = sd * Math.sqrt(TRADING_DAYS);
+  const annRet = m * TRADING_DAYS;
+  const posDays = (r.filter((x) => x > 0).length / r.length) * 100;
+  return {
+    ready: true,
+    n: r.length,
+    sharpe: sd ? annRet / vol : null,
+    sortino: downsideDev ? annRet / (downsideDev * Math.sqrt(TRADING_DAYS)) : null,
+    volatility: vol * 100,
+    downsideDev: downsideDev * Math.sqrt(TRADING_DAYS) * 100,
+    maxDrawdown: -maxDrawdown(equity) * 100,
+    posDays,
+  };
+}
+
+function renderRiskMeasures(d) {
+  const risk = computeRisk(d.equity || []);
+  const note = document.getElementById("risk-note");
+  const set = (id, val, klass) => {
+    const el = document.getElementById(id);
+    el.textContent = val;
+    el.className = "stat-value" + (klass ? " " + klass : "");
+  };
+
+  if (!risk.ready) {
+    note.textContent = `Building history · ${risk.n + 1} day${risk.n === 0 ? "" : "s"}`;
+    ["risk-sharpe", "risk-sortino", "risk-vol", "risk-mdd", "risk-beta", "risk-dd"].forEach((id) => set(id, DASH));
+    return;
+  }
+  note.textContent = `${risk.n} daily returns`;
+  set("risk-sharpe", risk.sharpe == null ? DASH : risk.sharpe.toFixed(2), risk.sharpe == null ? "" : cls(risk.sharpe));
+  set("risk-sortino", risk.sortino == null ? DASH : risk.sortino.toFixed(2), risk.sortino == null ? "" : cls(risk.sortino));
+  set("risk-vol", `${risk.volatility.toFixed(1)}%`);
+  set("risk-mdd", `${risk.maxDrawdown.toFixed(1)}%`, "neg");
+  set("risk-dd", `${risk.downsideDev.toFixed(1)}%`);
+  // Beta needs a benchmark series; left as — until benchmark history is supplied.
+  set("risk-beta", d.beta != null ? d.beta.toFixed(2) : DASH);
+}
+
+// ---- Change in Index (anonymized "Change in NAV") -----------------------
+function renderChangeInIndex(d) {
+  const eq = d.equity || [];
+  const periodEl = document.getElementById("nav-period");
+  const set = (id, val, klass) => {
+    const el = document.getElementById(id);
+    el.textContent = val;
+    el.className = "stat-value" + (klass ? " " + klass : "");
+  };
+
+  if (!eq.length) {
+    periodEl.textContent = "";
+    ["nav-begin", "nav-end", "nav-change", "nav-best", "nav-worst", "nav-pos"].forEach((id) => set(id, DASH));
+    return;
+  }
+
+  const begin = eq[0].index;
+  const end = eq[eq.length - 1].index;
+  const changePct = begin ? (end / begin - 1) * 100 : 0;
+  periodEl.textContent = `${eq[0].date} → ${eq[eq.length - 1].date}`;
+
+  set("nav-begin", fmtIndex(begin, 1));
+  set("nav-end", fmtIndex(end, 1));
+  set("nav-change", fmtPct(changePct), eq.length > 1 ? cls(changePct) : "");
+
+  const r = dailyReturns(eq);
+  if (r.length) {
+    set("nav-best", fmtPct(Math.max(...r) * 100), "pos");
+    set("nav-worst", fmtPct(Math.min(...r) * 100), "neg");
+    set("nav-pos", `${((r.filter((x) => x > 0).length / r.length) * 100).toFixed(0)}%`);
+  } else {
+    set("nav-best", DASH);
+    set("nav-worst", DASH);
+    set("nav-pos", DASH);
+  }
+}
+
+// ---- Investment themes (exposure as % of book) --------------------------
+function renderThemes(d) {
+  const holdings = d.holdings || [];
+  const map = new Map();
+  for (const h of holdings) {
+    const themes = THEME_MAP[h.symbol];
+    if (!themes) continue;
+    for (const t of themes) map.set(t, (map.get(t) || 0) + (h.weight || 0));
+  }
+  const arr = [...map.entries()]
+    .map(([label, pct]) => ({ label, pct }))
+    .sort((a, b) => b.pct - a.pct);
+
+  const el = document.getElementById("themes-list");
+  if (!arr.length) {
+    el.innerHTML = `<div class="muted center pad">No mapped themes.</div>`;
+    return;
+  }
+  const max = arr[0].pct || 1;
+  el.innerHTML = arr.map((t) => `
+    <div class="theme-row">
+      <span class="theme-name">${t.label}</span>
+      <span class="theme-bar"><span style="width:${(t.pct / max) * 100}%"></span></span>
+      <span class="theme-pct">${t.pct.toFixed(1)}%</span>
+    </div>
+  `).join("");
 }
 
 function filterEquityByRange(equity, range, fromDate) {
@@ -155,7 +316,7 @@ function renderEquityChart() {
         backgroundColor: grad,
         fill: true,
         tension: 0.25,
-        pointRadius: 0,
+        pointRadius: data.length <= 2 ? 3 : 0,
         pointHoverRadius: 5,
         pointHoverBackgroundColor: lineColor,
         pointHoverBorderColor: "#fff",
@@ -285,67 +446,28 @@ function renderMonthlyChart(monthly) {
   });
 }
 
-function renderMoversChart(holdings) {
-  const ctx = document.getElementById("moversChart");
-  if (state.charts.movers) state.charts.movers.destroy();
+// ---- Portfolio movers: weight % and contribution-to-return (CTR) --------
+// CTR_i = weight_i * unrealizedReturn_i (in percentage points). Sum ≈ total return.
+function renderMovers(d) {
+  const holdings = d.holdings || [];
+  const rows = holdings.map((h) => ({
+    symbol: h.symbol,
+    weight: h.weight || 0,
+    ctr: ((h.weight || 0) / 100) * (h.unrealizedPnlPct || 0),
+  })).sort((a, b) => b.ctr - a.ctr);
 
-  const sorted = [...holdings].sort((a, b) => b.unrealizedPnlPct - a.unrealizedPnlPct);
-  const top = sorted.slice(0, 5);
-  const bot = sorted.slice(-5).reverse();
-  const data = [...top, ...bot].filter((v, i, arr) => arr.findIndex((x) => x.symbol === v.symbol) === i);
+  const top = rows.slice(0, 3);
+  const bottom = rows.slice(-3).reverse();
 
-  state.charts.movers = new Chart(ctx, {
-    type: "bar",
-    data: {
-      labels: data.map((d) => d.symbol),
-      datasets: [{
-        data: data.map((d) => d.unrealizedPnlPct),
-        backgroundColor: data.map((d) => (d.unrealizedPnlPct >= 0 ? "rgba(46,204,113,0.75)" : "rgba(255,93,93,0.75)")),
-        borderRadius: 4,
-        borderSkipped: false,
-      }],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      indexAxis: "y",
-      interaction: { intersect: false, mode: "index" },
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: "#0b0d12",
-          borderColor: "#1f2430",
-          borderWidth: 1,
-          titleColor: COLORS.text,
-          bodyColor: COLORS.text,
-          padding: 10,
-          displayColors: false,
-          callbacks: {
-            label: (ctx) => {
-              const h = data[ctx.dataIndex];
-              return fmtPct(h.unrealizedPnlPct);
-            },
-          },
-        },
-      },
-      scales: {
-        x: {
-          grid: { color: COLORS.grid, drawTicks: false },
-          ticks: { color: COLORS.textMute, callback: (v) => `${v}%`, font: { size: 10 } },
-          border: { display: false },
-        },
-        y: {
-          grid: { display: false },
-          ticks: {
-            color: COLORS.text,
-            font: { size: 11, family: "Inter", weight: "500" },
-            padding: 4,
-          },
-          border: { display: false },
-        },
-      },
-    },
-  });
+  const rowHtml = (r) => `
+    <div class="mover-row">
+      <span class="mover-sym">${r.symbol}</span>
+      <span class="num mover-wt">${r.weight.toFixed(2)}</span>
+      <span class="num ${cls(r.ctr)}">${r.ctr >= 0 ? "+" : ""}${r.ctr.toFixed(2)}</span>
+    </div>`;
+
+  document.getElementById("movers-top").innerHTML = top.map(rowHtml).join("") || `<div class="muted pad">—</div>`;
+  document.getElementById("movers-bottom").innerHTML = bottom.map(rowHtml).join("") || `<div class="muted pad">—</div>`;
 }
 
 function chartOpts({ yFormatter, yTitle, xTimeAxis = false, tooltipLabel } = {}) {

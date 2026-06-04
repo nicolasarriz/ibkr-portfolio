@@ -50,24 +50,6 @@
     </div>
   </section>
 
-  <section class="kpis kpis-3" id="risk">
-    <div class="kpi card">
-      <span class="kpi-label">Max Drawdown</span>
-      <span class="kpi-value" id="risk-mdd">—</span>
-      <span class="kpi-sub">Peak-to-trough</span>
-    </div>
-    <div class="kpi card">
-      <span class="kpi-label">Volatility</span>
-      <span class="kpi-value" id="risk-vol">—</span>
-      <span class="kpi-sub">Annualized · daily</span>
-    </div>
-    <div class="kpi card">
-      <span class="kpi-label">Sharpe Ratio</span>
-      <span class="kpi-value" id="risk-sharpe">—</span>
-      <span class="kpi-sub">Annualized · rf = 0</span>
-    </div>
-  </section>
-
   <section class="grid">
     <div class="card chart-card span-2">
       <div class="card-head">
@@ -102,6 +84,39 @@
     </div>
   </section>
 
+  <section class="grid-3">
+    <div class="card stat-card">
+      <div class="card-head"><h2>Change in Index</h2><span class="hint" id="nav-period">&nbsp;</span></div>
+      <div class="stat-grid" id="change-nav">
+        <div class="stat"><span class="stat-label">Beginning</span><span class="stat-value" id="nav-begin">—</span></div>
+        <div class="stat"><span class="stat-label">Ending</span><span class="stat-value" id="nav-end">—</span></div>
+        <div class="stat"><span class="stat-label">Change</span><span class="stat-value" id="nav-change">—</span></div>
+        <div class="stat"><span class="stat-label">Best day</span><span class="stat-value" id="nav-best">—</span></div>
+        <div class="stat"><span class="stat-label">Worst day</span><span class="stat-value" id="nav-worst">—</span></div>
+        <div class="stat"><span class="stat-label">% Positive days</span><span class="stat-value" id="nav-pos">—</span></div>
+      </div>
+    </div>
+
+    <div class="card stat-card">
+      <div class="card-head"><h2>Risk Measures</h2><span class="hint" id="risk-note">&nbsp;</span></div>
+      <div class="stat-grid" id="risk-measures">
+        <div class="stat"><span class="stat-label">Sharpe</span><span class="stat-value" id="risk-sharpe">—</span></div>
+        <div class="stat"><span class="stat-label">Sortino</span><span class="stat-value" id="risk-sortino">—</span></div>
+        <div class="stat"><span class="stat-label">Volatility <span class="stat-hint">ann.</span></span><span class="stat-value" id="risk-vol">—</span></div>
+        <div class="stat"><span class="stat-label">Max Drawdown</span><span class="stat-value" id="risk-mdd">—</span></div>
+        <div class="stat"><span class="stat-label">Beta <span class="stat-hint">vs S&amp;P</span></span><span class="stat-value" id="risk-beta">—</span></div>
+        <div class="stat"><span class="stat-label">Downside Dev <span class="stat-hint">ann.</span></span><span class="stat-value" id="risk-dd">—</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Investment Themes</h2><span class="hint">% of book exposed</span></div>
+      <div class="themes" id="themes-list">
+        <div class="muted center pad">Loading…</div>
+      </div>
+    </div>
+  </section>
+
   <section class="card table-card">
     <div class="card-head">
       <h2>Holdings</h2>
@@ -127,16 +142,26 @@
   </section>
 
   <section class="grid">
+    <div class="card span-2">
+      <div class="card-head"><h2>Portfolio Movers</h2><span class="hint">Contribution to return (CTR)</span></div>
+      <div class="movers" id="movers">
+        <div class="movers-col">
+          <h3 class="movers-title">Top performers</h3>
+          <div class="movers-head"><span>Symbol</span><span class="num">Weight %</span><span class="num">CTR %</span></div>
+          <div id="movers-top"><div class="muted pad">Loading…</div></div>
+        </div>
+        <div class="movers-col">
+          <h3 class="movers-title">Bottom performers</h3>
+          <div class="movers-head"><span>Symbol</span><span class="num">Weight %</span><span class="num">CTR %</span></div>
+          <div id="movers-bottom"><div class="muted pad">Loading…</div></div>
+        </div>
+      </div>
+    </div>
+
     <div class="card chart-card">
       <div class="card-head"><h2>Monthly Realized Return</h2></div>
       <div class="chart-wrap">
         <canvas id="monthlyChart"></canvas>
-      </div>
-    </div>
-    <div class="card chart-card">
-      <div class="card-head"><h2>Top Movers (Unrealized)</h2></div>
-      <div class="chart-wrap">
-        <canvas id="moversChart"></canvas>
       </div>
     </div>
   </section>
