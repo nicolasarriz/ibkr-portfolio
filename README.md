@@ -63,6 +63,23 @@ export IBKR_FLEX_QUERY_ID=...
 python scripts/fetch_flex.py
 ```
 
+## Seeding history (one-time backfill)
+
+A brand-new pipeline only records one NAV point per day, so the equity curve
+starts almost flat. `scripts/backfill_history.py` reconstructs a daily curve
+from the **current holdings' real market prices** (Yahoo Finance) over the life
+of the book, then scales it so it starts at 100 and ends at the account's
+**actual** total return — it never overstates performance. It also pulls a
+matching S&P 500 series for the benchmark overlay.
+
+```bash
+BACKFILL_START=2026-03-04 python scripts/backfill_history.py   # inception date
+```
+
+Dates before a position was opened are hypothetical (they assume the current
+allocation); the chart notes this. Going forward, `fetch_flex.py` appends the
+real daily NAV on top of the seeded history.
+
 ## Customizing
 
 - Edit `index.html` for layout, `style.css` for colors, `app.js` for chart behavior.

@@ -204,6 +204,7 @@ body {
 /* Charts */
 .chart-wrap { position: relative; height: 320px; }
 .chart-card .chart-wrap { padding-top: 4px; }
+.chart-note { color: var(--text-mute); font-size: 10.5px; line-height: 1.4; margin: 10px 2px 0; }
 
 /* Table */
 .table-card { padding: 18px; margin-bottom: 20px; }
