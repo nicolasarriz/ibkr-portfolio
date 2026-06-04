@@ -1,14 +1,14 @@
 {
-  "lastUpdated": "2026-06-03T20:41:08Z",
+  "lastUpdated": "2026-06-04T12:43:35Z",
   "baseCurrency": "USD",
-  "nav": 4852.52,
+  "nav": 4816.14,
   "cash": 0.0,
-  "totalPnl": 693.11,
-  "totalPnlPct": 16.66,
-  "dayPnl": 0.0,
-  "dayPnlPct": 0.0,
-  "ytdPnl": 0.0,
-  "ytdPct": 0.0,
+  "totalPnl": 656.73,
+  "totalPnlPct": 15.79,
+  "dayPnl": -36.38,
+  "dayPnlPct": -0.75,
+  "ytdPnl": -36.38,
+  "ytdPct": -0.75,
   "holdings": [
     {
       "symbol": "GOOGL",
@@ -17,10 +17,10 @@
       "sector": "Communication Services",
       "quantity": 2.0,
       "avgCost": 293.98,
-      "lastPrice": 361.85,
-      "marketValue": 723.7,
-      "unrealizedPnl": 135.74,
-      "unrealizedPnlPct": 23.09
+      "lastPrice": 358.99,
+      "marketValue": 717.98,
+      "unrealizedPnl": 130.02,
+      "unrealizedPnlPct": 22.11
     },
     {
       "symbol": "IGM",
@@ -29,10 +29,10 @@
       "sector": "Tech Sector ETF",
       "quantity": 1.0,
       "avgCost": 128.455,
-      "lastPrice": 170.99,
-      "marketValue": 170.99,
-      "unrealizedPnl": 42.53,
-      "unrealizedPnlPct": 33.11
+      "lastPrice": 169.55,
+      "marketValue": 169.55,
+      "unrealizedPnl": 41.09,
+      "unrealizedPnlPct": 31.99
     },
     {
       "symbol": "JPM",
@@ -41,10 +41,10 @@
       "sector": "Financials",
       "quantity": 2.0,
       "avgCost": 295.28,
-      "lastPrice": 300.96,
-      "marketValue": 601.92,
-      "unrealizedPnl": 11.36,
-      "unrealizedPnlPct": 1.92
+      "lastPrice": 300.85,
+      "marketValue": 601.7,
+      "unrealizedPnl": 11.14,
+      "unrealizedPnlPct": 1.89
     },
     {
       "symbol": "MAGS",
@@ -53,10 +53,10 @@
       "sector": "Mega Cap Tech ETF",
       "quantity": 4.0,
       "avgCost": 60.555,
-      "lastPrice": 69.17,
-      "marketValue": 276.68,
-      "unrealizedPnl": 34.46,
-      "unrealizedPnlPct": 14.23
+      "lastPrice": 68.42,
+      "marketValue": 273.68,
+      "unrealizedPnl": 31.46,
+      "unrealizedPnlPct": 12.99
     },
     {
       "symbol": "PLTR",
@@ -65,10 +65,10 @@
       "sector": "Technology",
       "quantity": 2.0,
       "avgCost": 147.54,
-      "lastPrice": 152.17,
-      "marketValue": 304.34,
-      "unrealizedPnl": 9.26,
-      "unrealizedPnlPct": 3.14
+      "lastPrice": 142.2,
+      "marketValue": 284.4,
+      "unrealizedPnl": -10.68,
+      "unrealizedPnlPct": -3.62
     },
     {
       "symbol": "QQQ",
@@ -77,10 +77,10 @@
       "sector": "US Large Cap ETF",
       "quantity": 1.0,
       "avgCost": 575.26,
-      "lastPrice": 746.16,
-      "marketValue": 746.16,
-      "unrealizedPnl": 170.9,
-      "unrealizedPnlPct": 29.71
+      "lastPrice": 744.21,
+      "marketValue": 744.21,
+      "unrealizedPnl": 168.95,
+      "unrealizedPnlPct": 29.37
     },
     {
       "symbol": "SMH",
@@ -89,10 +89,10 @@
       "sector": "Semiconductor ETF",
       "quantity": 1.0,
       "avgCost": 542.34,
-      "lastPrice": 632.21,
-      "marketValue": 632.21,
-      "unrealizedPnl": 89.87,
-      "unrealizedPnlPct": 16.57
+      "lastPrice": 637.9,
+      "marketValue": 637.9,
+      "unrealizedPnl": 95.56,
+      "unrealizedPnlPct": 17.62
     },
     {
       "symbol": "VOO",
@@ -101,16 +101,20 @@
       "sector": "US Large Cap ETF",
       "quantity": 2.0,
       "avgCost": 598.765,
-      "lastPrice": 698.26,
-      "marketValue": 1396.52,
-      "unrealizedPnl": 198.99,
-      "unrealizedPnlPct": 16.62
+      "lastPrice": 693.36,
+      "marketValue": 1386.72,
+      "unrealizedPnl": 189.19,
+      "unrealizedPnlPct": 15.8
     }
   ],
   "equity": [
     {
       "date": "2026-06-03",
       "value": 4852.52
+    },
+    {
+      "date": "2026-06-04",
+      "value": 4816.14
     }
   ],
   "monthlyPnl": [
