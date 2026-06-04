@@ -138,10 +138,16 @@ def detect_sector(symbol: str, sub_cat: str, asset_class: str) -> str:
 
 
 def parse(xml_bytes: bytes) -> dict:
+    """Parse the Flex XML and return an *anonymized* payload.
+
+    No absolute currency amounts (NAV, market value, prices, dollar P&L) ever
+    leave this function. Everything is expressed as percentages or as a
+    portfolio index based at 100, so the committed JSON is safe to publish.
+    """
     root = ET.fromstring(xml_bytes)
 
-    # --- Holdings -----------------------------------------------------------
-    holdings = []
+    # --- Holdings (dollar amounts kept locally, never emitted) --------------
+    raw = []
     for p in root.iter("OpenPosition"):
         qty = f(p, "position")
         if qty == 0:
@@ -154,20 +160,18 @@ def parse(xml_bytes: bytes) -> dict:
         symbol = s(p, "symbol")
         sub_cat = s(p, "subCategory")
         asset_class = detect_asset_class(s(p, "assetCategory"), sub_cat)
-        holdings.append({
+        raw.append({
             "symbol": symbol,
             "name": s(p, "description") or symbol,
             "assetClass": asset_class,
             "sector": detect_sector(symbol, sub_cat, asset_class),
-            "quantity": qty,
-            "avgCost": round(avg_cost, 4),
-            "lastPrice": round(last, 4),
-            "marketValue": round(mv, 2),
-            "unrealizedPnl": round(u_pnl, 2),
             "unrealizedPnlPct": round(u_pnl_pct, 2),
+            "_mv": mv,
+            "_cost": avg_cost * qty,
+            "_pnl": u_pnl,
         })
 
-    # --- NAV / cash ---------------------------------------------------------
+    # --- NAV / cash (local only) -------------------------------------------
     nav = 0.0
     cash = 0.0
     base_ccy = "USD"
@@ -176,48 +180,58 @@ def parse(xml_bytes: bytes) -> dict:
         cash = f(nav_row, "cash")
         base_ccy = s(nav_row, "currency") or base_ccy
     if nav == 0:
-        nav = sum(h["marketValue"] for h in holdings) + cash
+        nav = sum(h["_mv"] for h in raw) + cash
 
-    # --- Equity curve from ChangeInNAV -------------------------------------
+    # --- Portfolio weights (% of invested value) ---------------------------
+    total_mv = sum(h["_mv"] for h in raw)
+    holdings = []
+    for h in raw:
+        weight = (h["_mv"] / total_mv * 100) if total_mv else 0.0
+        holdings.append({
+            "symbol": h["symbol"],
+            "name": h["name"],
+            "assetClass": h["assetClass"],
+            "sector": h["sector"],
+            "unrealizedPnlPct": h["unrealizedPnlPct"],
+            "weight": round(weight, 2),
+        })
+
+    # --- Total return % (vs cost basis) ------------------------------------
+    mtm_rows = list(root.iter("MTMPerformanceSummaryInBase"))
+    total_pnl = sum(f(row, "total") for row in mtm_rows)
+    if total_pnl == 0 and raw:
+        total_pnl = sum(h["_pnl"] for h in raw)
+
+    total_cost = sum(h["_cost"] for h in raw)
+    total_pnl_pct = (sum(h["_pnl"] for h in raw) / total_cost * 100) if total_cost else 0.0
+    index = round(100 * (1 + total_pnl_pct / 100), 2)
+
+    # --- Indexed equity curve (NAV scaled to the index, no dollars) --------
     equity = []
     for row in root.iter("EquitySummaryByReportDateInBase"):
         d = s(row, "reportDate")
-        if d:
-            equity.append({"date": iso_date(d), "value": round(f(row, "total"), 2)})
+        if not d:
+            continue
+        v = f(row, "total")
+        idx = round(index * v / nav, 2) if nav else index
+        equity.append({"date": iso_date(d), "index": idx})
     equity.sort(key=lambda x: x["date"])
-    if not equity and nav:
-        equity = [{"date": dt.date.today().isoformat(), "value": round(nav, 2)}]
+    if not equity:
+        equity = [{"date": dt.date.today().isoformat(), "index": index}]
 
-    # --- P&L ---------------------------------------------------------------
-    mtm_rows = list(root.iter("MTMPerformanceSummaryInBase"))
-    total_pnl = sum(f(row, "total") for row in mtm_rows)
-    # Fallback: use sum of unrealized PnL from open positions (matches IBKR "Unrealized P&L")
-    if total_pnl == 0 and holdings:
-        total_pnl = sum(h["unrealizedPnl"] for h in holdings)
+    # --- Day / YTD return % from the indexed series ------------------------
+    day_pct = 0.0
+    if len(equity) >= 2 and equity[-2]["index"]:
+        day_pct = (equity[-1]["index"] / equity[-2]["index"] - 1) * 100
 
-    total_cost = sum((h["avgCost"] * h["quantity"]) for h in holdings)
-    if total_cost:
-        total_pnl_pct = sum(h["unrealizedPnl"] for h in holdings) / total_cost * 100
-    else:
-        total_pnl_pct = 0.0
-
-    day_pnl = 0.0
-    day_pnl_pct = 0.0
-    if len(equity) >= 2:
-        day_pnl = equity[-1]["value"] - equity[-2]["value"]
-        if equity[-2]["value"]:
-            day_pnl_pct = day_pnl / equity[-2]["value"] * 100
-
-    # YTD = first equity point of current year vs latest
-    ytd_pnl = 0.0
     ytd_pct = 0.0
     if equity:
         year = equity[-1]["date"][:4]
         start = next((p for p in equity if p["date"].startswith(year)), equity[0])
-        ytd_pnl = equity[-1]["value"] - start["value"]
-        ytd_pct = (ytd_pnl / start["value"] * 100) if start["value"] else 0.0
+        if start["index"]:
+            ytd_pct = (equity[-1]["index"] / start["index"] - 1) * 100
 
-    # --- Monthly realized PnL bucket from trades ---------------------------
+    # --- Monthly realized return % (% of cost basis, no dollars) -----------
     monthly_map = {}
     for tr in root.iter("Trade"):
         pnl = f(tr, "fifoPnlRealized")
@@ -226,25 +240,53 @@ def parse(xml_bytes: bytes) -> dict:
         d = iso_date(s(tr, "tradeDate"))
         if not d:
             continue
-        ym = d[:7]
-        monthly_map[ym] = monthly_map.get(ym, 0.0) + pnl
-    monthly = [{"month": k, "pnl": round(v, 2)} for k, v in sorted(monthly_map.items())]
+        monthly_map[d[:7]] = monthly_map.get(d[:7], 0.0) + pnl
+    monthly = [
+        {"month": k, "returnPct": round(v / total_cost * 100, 2) if total_cost else 0.0}
+        for k, v in sorted(monthly_map.items())
+    ]
 
     return {
         "lastUpdated": dt.datetime.utcnow().replace(microsecond=0).isoformat() + "Z",
         "baseCurrency": base_ccy,
-        "nav": round(nav, 2),
-        "cash": round(cash, 2),
-        "totalPnl": round(total_pnl, 2),
-        "totalPnlPct": round(total_pnl_pct, 2),
-        "dayPnl": round(day_pnl, 2),
-        "dayPnlPct": round(day_pnl_pct, 2),
-        "ytdPnl": round(ytd_pnl, 2),
-        "ytdPct": round(ytd_pct, 2),
+        "index": index,
+        "totalReturnPct": round(total_pnl_pct, 2),
+        "dayReturnPct": round(day_pct, 2),
+        "ytdReturnPct": round(ytd_pct, 2),
+        "risk": compute_risk(equity),
         "holdings": holdings,
         "equity": equity,
-        "monthlyPnl": monthly,
+        "monthly": monthly,
     }
+
+
+def compute_risk(equity: list) -> dict:
+    """Risk metrics from the indexed equity series. Returns None for any
+    metric that lacks enough data rather than fabricating a value."""
+    risk = {"maxDrawdownPct": None, "volatilityPct": None, "sharpe": None}
+    vals = [p["index"] for p in equity if p.get("index")]
+    n = len(vals)
+
+    # Max drawdown — needs a few points to be meaningful
+    if n >= 5:
+        peak = vals[0]
+        mdd = 0.0
+        for v in vals:
+            peak = max(peak, v)
+            mdd = min(mdd, (v / peak - 1) * 100)
+        risk["maxDrawdownPct"] = round(mdd, 2)
+
+    # Annualized volatility & Sharpe — need ~a month of daily returns
+    rets = [vals[i] / vals[i - 1] - 1 for i in range(1, n) if vals[i - 1]]
+    if len(rets) >= 20:
+        mean = sum(rets) / len(rets)
+        var = sum((r - mean) ** 2 for r in rets) / (len(rets) - 1)
+        sd = var ** 0.5
+        ann = 252 ** 0.5
+        risk["volatilityPct"] = round(sd * ann * 100, 2)
+        if sd > 0:
+            risk["sharpe"] = round((mean * 252) / (sd * ann), 2)  # rf = 0
+    return risk
 
 
 def map_asset_class(code: str) -> str:
@@ -269,7 +311,7 @@ def iso_date(raw: str) -> str:
 
 
 def merge_history(data: dict, existing_path: str) -> dict:
-    """Append today's snapshot to historical equity / monthly P&L from prior run."""
+    """Append today's indexed snapshot to the historical series from prior runs."""
     if not os.path.exists(existing_path):
         return data
     try:
@@ -280,33 +322,31 @@ def merge_history(data: dict, existing_path: str) -> dict:
 
     today = dt.date.today().isoformat()
 
-    # --- Equity history ----------------------------------------------------
-    prev_equity = prev.get("equity") or []
-    by_date = {p["date"]: p["value"] for p in prev_equity}
-    by_date[today] = data["nav"]
+    # --- Indexed equity history --------------------------------------------
+    by_date = {p["date"]: p["index"] for p in (prev.get("equity") or []) if "index" in p}
+    by_date[today] = data["index"]
     for p in data.get("equity", []):
-        by_date.setdefault(p["date"], p["value"])
-    merged_equity = [{"date": d, "value": round(v, 2)} for d, v in sorted(by_date.items())]
-    data["equity"] = merged_equity
+        by_date.setdefault(p["date"], p["index"])
+    merged = [{"date": d, "index": round(v, 2)} for d, v in sorted(by_date.items())]
+    data["equity"] = merged
 
-    # --- Day P&L / YTD from merged equity ----------------------------------
-    if len(merged_equity) >= 2:
-        last_v = merged_equity[-1]["value"]
-        prev_v = merged_equity[-2]["value"]
-        data["dayPnl"] = round(last_v - prev_v, 2)
-        data["dayPnlPct"] = round((last_v - prev_v) / prev_v * 100, 2) if prev_v else 0.0
-    if merged_equity:
-        year = merged_equity[-1]["date"][:4]
-        start = next((p for p in merged_equity if p["date"].startswith(year)), merged_equity[0])
-        ytd = merged_equity[-1]["value"] - start["value"]
-        data["ytdPnl"] = round(ytd, 2)
-        data["ytdPct"] = round(ytd / start["value"] * 100, 2) if start["value"] else 0.0
+    # --- Day / YTD return % from merged series -----------------------------
+    if len(merged) >= 2 and merged[-2]["index"]:
+        data["dayReturnPct"] = round((merged[-1]["index"] / merged[-2]["index"] - 1) * 100, 2)
+    if merged:
+        year = merged[-1]["date"][:4]
+        start = next((p for p in merged if p["date"].startswith(year)), merged[0])
+        if start["index"]:
+            data["ytdReturnPct"] = round((merged[-1]["index"] / start["index"] - 1) * 100, 2)
 
-    # --- Monthly realized P&L (union) --------------------------------------
-    prev_monthly = {m["month"]: m["pnl"] for m in (prev.get("monthlyPnl") or [])}
-    for m in data.get("monthlyPnl", []):
-        prev_monthly[m["month"]] = m["pnl"]
-    data["monthlyPnl"] = [{"month": k, "pnl": v} for k, v in sorted(prev_monthly.items())]
+    # --- Monthly realized return % (union) ---------------------------------
+    prev_monthly = {m["month"]: m.get("returnPct", 0.0) for m in (prev.get("monthly") or [])}
+    for m in data.get("monthly", []):
+        prev_monthly[m["month"]] = m["returnPct"]
+    data["monthly"] = [{"month": k, "returnPct": v} for k, v in sorted(prev_monthly.items())]
+
+    # --- Recompute risk on the full history --------------------------------
+    data["risk"] = compute_risk(merged)
     return data
 
 
@@ -328,7 +368,7 @@ def main():
     with open(out, "w", encoding="utf-8") as fh:
         json.dump(data, fh, indent=2)
     print(
-        f"Wrote {out} — NAV {data['nav']} {data['baseCurrency']}, "
+        f"Wrote {out} — index {data['index']} (total {data['totalReturnPct']}%), "
         f"{len(data['holdings'])} positions, equity points {len(data.get('equity', []))}"
     )
 
