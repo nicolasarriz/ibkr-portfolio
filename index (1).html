@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Nicolás Arriz — IBKR Portfolio</title>
+<meta name="description" content="Live trading portfolio — performance, holdings, and risk metrics." />
+<link rel="stylesheet" href="style.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">NA</div>
+      <div>
+        <h1>Nicolás Arriz</h1>
+        <p class="subtitle">Personal trading analytics · figures indexed for presentation</p>
+      </div>
+    </div>
+    <div class="topbar-meta">
+      <span class="dot live"></span>
+      <span id="last-updated">Loading…</span>
+    </div>
+  </header>
+
+  <section class="kpis" id="kpis">
+    <div class="kpi card">
+      <span class="kpi-label">Portfolio Index</span>
+      <span class="kpi-value" id="kpi-index">—</span>
+      <span class="kpi-sub" id="kpi-index-sub">Base 100 · since inception</span>
+    </div>
+    <div class="kpi card">
+      <span class="kpi-label">Total Return</span>
+      <span class="kpi-value" id="kpi-total">—</span>
+      <span class="kpi-sub" id="kpi-total-sub">Since inception</span>
+    </div>
+    <div class="kpi card">
+      <span class="kpi-label">Today</span>
+      <span class="kpi-value" id="kpi-day">—</span>
+      <span class="kpi-sub" id="kpi-day-sub">Daily change</span>
+    </div>
+    <div class="kpi card">
+      <span class="kpi-label">YTD Return</span>
+      <span class="kpi-value" id="kpi-ytd">—</span>
+      <span class="kpi-sub" id="kpi-ytd-sub">Year to date</span>
+    </div>
+  </section>
+
+  <section class="kpis kpis-3" id="risk">
+    <div class="kpi card">
+      <span class="kpi-label">Max Drawdown</span>
+      <span class="kpi-value" id="risk-mdd">—</span>
+      <span class="kpi-sub">Peak-to-trough</span>
+    </div>
+    <div class="kpi card">
+      <span class="kpi-label">Volatility</span>
+      <span class="kpi-value" id="risk-vol">—</span>
+      <span class="kpi-sub">Annualized · daily</span>
+    </div>
+    <div class="kpi card">
+      <span class="kpi-label">Sharpe Ratio</span>
+      <span class="kpi-value" id="risk-sharpe">—</span>
+      <span class="kpi-sub">Annualized · rf = 0</span>
+    </div>
+  </section>
+
+  <section class="grid">
+    <div class="card chart-card span-2">
+      <div class="card-head">
+        <h2>Indexed Performance</h2>
+        <div class="equity-controls">
+          <input type="date" id="from-date" title="Show from date" />
+          <div class="range-toggle" id="range-toggle">
+            <button data-range="1M">1M</button>
+            <button data-range="3M">3M</button>
+            <button data-range="6M">6M</button>
+            <button data-range="YTD" class="active">YTD</button>
+            <button data-range="ALL">ALL</button>
+          </div>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="equityChart"></canvas>
+      </div>
+    </div>
+
+    <div class="card chart-card">
+      <div class="card-head">
+        <h2>Allocation</h2>
+        <div class="range-toggle" id="alloc-toggle">
+          <button data-mode="asset" class="active">Asset</button>
+          <button data-mode="sector">Sector</button>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="allocChart"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <section class="card table-card">
+    <div class="card-head">
+      <h2>Holdings</h2>
+      <span class="hint">Click a column to sort</span>
+    </div>
+    <div class="table-wrap">
+      <table id="holdings-table">
+        <thead>
+          <tr>
+            <th data-sort="symbol">Symbol</th>
+            <th data-sort="name">Name</th>
+            <th data-sort="assetClass">Asset Class</th>
+            <th data-sort="sector">Sector</th>
+            <th data-sort="unrealizedPnlPct" class="num">Unrealized Return</th>
+            <th data-sort="weight" class="num">Weight</th>
+          </tr>
+        </thead>
+        <tbody id="holdings-body">
+          <tr><td colspan="6" class="muted center">Loading holdings…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="grid">
+    <div class="card chart-card">
+      <div class="card-head"><h2>Monthly Realized Return</h2></div>
+      <div class="chart-wrap">
+        <canvas id="monthlyChart"></canvas>
+      </div>
+    </div>
+    <div class="card chart-card">
+      <div class="card-head"><h2>Top Movers (Unrealized)</h2></div>
+      <div class="chart-wrap">
+        <canvas id="moversChart"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <p>Personal trading analytics dashboard — figures indexed/anonymized for presentation purposes.</p>
+    <p>Data pulled from Interactive Brokers Flex Web Service · refreshed daily via GitHub Actions.</p>
+    <p>This page is for informational purposes only and does not constitute investment advice.</p>
+  </footer>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
