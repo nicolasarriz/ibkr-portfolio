@@ -24,10 +24,14 @@ import sys
 import time
 import json
 import math
+import bisect
 import datetime as dt
 import xml.etree.ElementTree as ET
 import urllib.request
 import urllib.parse
+
+
+BENCHMARK_SYMBOL = "%5EGSPC"  # ^GSPC — S&P 500 (Yahoo Finance, no API key)
 
 
 FLEX_REQUEST_URL = "https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.SendRequest"
@@ -159,6 +163,37 @@ def iso_date(raw: str) -> str:
     if len(raw) == 8 and raw.isdigit():
         return f"{raw[0:4]}-{raw[4:6]}-{raw[6:8]}"
     return raw[:10]
+
+
+def fetch_benchmark(dates: list, symbol: str = BENCHMARK_SYMBOL) -> list:
+    """S&P 500 daily closes (Yahoo), aligned to the portfolio dates and indexed
+    to 100 at the first date. Forward-fills non-trading days. Best-effort."""
+    if not dates:
+        return []
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?range=5y&interval=1d"
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        j = json.loads(r.read())
+    res = j["chart"]["result"][0]
+    ts = res["timestamp"]
+    closes = res["indicators"]["quote"][0]["close"]
+    close_by_date = {}
+    for t, c in zip(ts, closes):
+        if c is None:
+            continue
+        close_by_date[dt.datetime.utcfromtimestamp(t).date().isoformat()] = c
+    keys = sorted(close_by_date)
+    if not keys:
+        return []
+    aligned = []
+    for d in dates:
+        i = bisect.bisect_right(keys, d) - 1  # latest market close on/before d
+        if i >= 0:
+            aligned.append((d, close_by_date[keys[i]]))
+    if not aligned:
+        return []
+    base = aligned[0][1]
+    return [{"date": d, "index": round(c / base * 100, 2)} for d, c in aligned if base]
 
 
 def risk_from_index(index_series: list) -> dict:
@@ -322,7 +357,8 @@ def finalize(data: dict) -> dict:
 
     # Stable key order for a clean diff
     order = ["lastUpdated", "baseCurrency", "index", "totalReturnPct",
-             "dayReturnPct", "ytdReturnPct", "risk", "holdings", "equity", "monthly"]
+             "dayReturnPct", "ytdReturnPct", "risk", "holdings", "equity",
+             "benchmark", "monthly"]
     return {k: data[k] for k in order if k in data}
 
 
@@ -339,6 +375,24 @@ def main():
 
     out = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "portfolio.json"))
     data = merge_history(data, out)
+
+    # S&P 500 benchmark (best-effort; keep previous on failure)
+    dates = [p["date"] for p in data.get("equity", [])]
+    try:
+        bench = fetch_benchmark(dates)
+        if bench:
+            data["benchmark"] = bench
+    except Exception as exc:
+        print(f"benchmark fetch skipped: {exc}", file=sys.stderr)
+    if "benchmark" not in data and os.path.exists(out):
+        try:
+            with open(out, "r", encoding="utf-8") as fh:
+                prev_b = json.load(fh).get("benchmark")
+            if prev_b:
+                data["benchmark"] = prev_b
+        except Exception:
+            pass
+
     data = finalize(data)
     os.makedirs(os.path.dirname(out), exist_ok=True)
     with open(out, "w", encoding="utf-8") as fh:

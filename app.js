@@ -175,6 +175,28 @@ function computeRisk(equity) {
   };
 }
 
+// Beta vs benchmark from aligned daily returns: cov(p,b) / var(b)
+function computeBeta(equity, benchmark) {
+  if (!benchmark?.length) return null;
+  const bMap = new Map(benchmark.map((p) => [p.date, p.index]));
+  const pts = (equity || []).filter((p) => bMap.has(p.date));
+  if (pts.length < MIN_RETURNS + 1) return null;
+  const pr = [], br = [];
+  for (let i = 1; i < pts.length; i++) {
+    const pp = pts[i - 1].index, pc = pts[i].index;
+    const bp = bMap.get(pts[i - 1].date), bc = bMap.get(pts[i].date);
+    if (pp && bp) { pr.push(pc / pp - 1); br.push(bc / bp - 1); }
+  }
+  if (br.length < MIN_RETURNS) return null;
+  const mp = mean(pr), mb = mean(br);
+  let cov = 0, varb = 0;
+  for (let i = 0; i < br.length; i++) {
+    cov += (pr[i] - mp) * (br[i] - mb);
+    varb += (br[i] - mb) ** 2;
+  }
+  return varb ? cov / varb : null;
+}
+
 function renderRiskMeasures(d) {
   const risk = computeRisk(d.equity || []);
   const note = document.getElementById("risk-note");
@@ -195,8 +217,8 @@ function renderRiskMeasures(d) {
   set("risk-vol", `${risk.volatility.toFixed(1)}%`);
   set("risk-mdd", `${risk.maxDrawdown.toFixed(1)}%`, "neg");
   set("risk-dd", `${risk.downsideDev.toFixed(1)}%`);
-  // Beta needs a benchmark series; left as — until benchmark history is supplied.
-  set("risk-beta", d.beta != null ? d.beta.toFixed(2) : DASH);
+  const beta = computeBeta(d.equity || [], d.benchmark || []);
+  set("risk-beta", beta == null ? DASH : beta.toFixed(2));
 }
 
 // ---- Change in Index (anonymized "Change in NAV") -----------------------
@@ -305,31 +327,57 @@ function renderEquityChart() {
   grad.addColorStop(0, up ? "rgba(46,204,113,0.25)" : "rgba(255,93,93,0.25)");
   grad.addColorStop(1, "rgba(46,204,113,0)");
 
+  const datasets = [{
+    label: "Portfolio",
+    data: values,
+    borderColor: lineColor,
+    backgroundColor: grad,
+    fill: true,
+    tension: 0.25,
+    pointRadius: data.length <= 2 ? 3 : 0,
+    pointHoverRadius: 5,
+    pointHoverBackgroundColor: lineColor,
+    pointHoverBorderColor: "#fff",
+    borderWidth: 2,
+    order: 1,
+  }];
+
+  // S&P 500 benchmark, aligned to the same dates and re-based to 100 at window start
+  const benchAll = state.data.benchmark || [];
+  if (benchAll.length) {
+    const bMap = new Map(benchAll.map((p) => [p.date, p.index]));
+    const winDates = data.map((p) => p.date).filter((d) => bMap.has(d));
+    if (winDates.length) {
+      const bBase = bMap.get(winDates[0]) || 100;
+      const benchValues = labels.map((d) => (bMap.has(d) && bBase ? (bMap.get(d) / bBase) * 100 : null));
+      datasets.push({
+        label: "S&P 500",
+        data: benchValues,
+        borderColor: COLORS.textMute,
+        borderDash: [5, 4],
+        backgroundColor: "transparent",
+        fill: false,
+        tension: 0.25,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        borderWidth: 1.5,
+        spanGaps: true,
+        order: 2,
+      });
+    }
+  }
+
   state.charts.equity = new Chart(ctx, {
     type: "line",
-    data: {
-      labels,
-      datasets: [{
-        label: "Portfolio Index",
-        data: values,
-        borderColor: lineColor,
-        backgroundColor: grad,
-        fill: true,
-        tension: 0.25,
-        pointRadius: data.length <= 2 ? 3 : 0,
-        pointHoverRadius: 5,
-        pointHoverBackgroundColor: lineColor,
-        pointHoverBorderColor: "#fff",
-        borderWidth: 2,
-      }],
-    },
+    data: { labels, datasets },
     options: chartOpts({
-      yTitle: "Portfolio Index",
+      yTitle: "Indexed to 100",
       yFormatter: (v) => fmtIndex(v, 0),
       xTimeAxis: true,
+      legend: datasets.length > 1,
       tooltipLabel: (ctx) => {
         const ret = ctx.parsed.y - 100;
-        return `Index ${fmtIndex(ctx.parsed.y, 2)} (${fmtPct(ret)})`;
+        return `${ctx.dataset.label}: ${fmtIndex(ctx.parsed.y, 2)} (${fmtPct(ret)})`;
       },
     }),
   });
@@ -470,13 +518,16 @@ function renderMovers(d) {
   document.getElementById("movers-bottom").innerHTML = bottom.map(rowHtml).join("") || `<div class="muted pad">—</div>`;
 }
 
-function chartOpts({ yFormatter, yTitle, xTimeAxis = false, tooltipLabel } = {}) {
+function chartOpts({ yFormatter, yTitle, xTimeAxis = false, tooltipLabel, legend = false } = {}) {
   return {
     responsive: true,
     maintainAspectRatio: false,
     interaction: { intersect: false, mode: "index" },
     plugins: {
-      legend: { display: false },
+      legend: legend
+        ? { display: true, position: "top", align: "end",
+            labels: { color: COLORS.textDim, boxWidth: 12, boxHeight: 2, font: { size: 11 }, padding: 14 } }
+        : { display: false },
       tooltip: {
         backgroundColor: "#0b0d12",
         borderColor: "#1f2430",
