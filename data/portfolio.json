@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-06-04T12:43:35Z",
+  "lastUpdated": "2026-06-05T23:45:38Z",
   "baseCurrency": "USD",
   "index": 115.79,
   "totalReturnPct": 15.79,
@@ -16,64 +16,64 @@
       "name": "ALPHABET INC-CL A",
       "assetClass": "Equity",
       "sector": "Communication Services",
-      "unrealizedPnlPct": 22.11,
-      "weight": 14.91
+      "unrealizedPnlPct": 26.6,
+      "weight": 15.34
     },
     {
       "symbol": "IGM",
       "name": "ISHARES EXPANDED TECH SECTOR",
       "assetClass": "ETF",
       "sector": "Tech Sector ETF",
-      "unrealizedPnlPct": 31.99,
-      "weight": 3.52
+      "unrealizedPnlPct": 30.04,
+      "weight": 3.44
     },
     {
       "symbol": "JPM",
       "name": "JPMORGAN CHASE & CO",
       "assetClass": "Equity",
       "sector": "Financials",
-      "unrealizedPnlPct": 1.89,
-      "weight": 12.49
+      "unrealizedPnlPct": 5.29,
+      "weight": 12.81
     },
     {
       "symbol": "MAGS",
       "name": "ROUNDHILL MAGNIFICENT SEVEN",
       "assetClass": "ETF",
       "sector": "Mega Cap Tech ETF",
-      "unrealizedPnlPct": 12.99,
-      "weight": 5.68
+      "unrealizedPnlPct": 14.14,
+      "weight": 5.7
     },
     {
       "symbol": "PLTR",
       "name": "PALANTIR TECHNOLOGIES INC-A",
       "assetClass": "Equity",
       "sector": "Technology",
-      "unrealizedPnlPct": -3.62,
-      "weight": 5.91
+      "unrealizedPnlPct": -3.96,
+      "weight": 5.84
     },
     {
       "symbol": "QQQ",
       "name": "INVESCO QQQ TRUST SERIES 1",
       "assetClass": "ETF",
       "sector": "US Large Cap ETF",
-      "unrealizedPnlPct": 29.37,
-      "weight": 15.45
+      "unrealizedPnlPct": 28.74,
+      "weight": 15.26
     },
     {
       "symbol": "SMH",
       "name": "VANECK SEMICONDUCTOR ETF",
       "assetClass": "ETF",
       "sector": "Semiconductor ETF",
-      "unrealizedPnlPct": 17.62,
-      "weight": 13.25
+      "unrealizedPnlPct": 15.71,
+      "weight": 12.93
     },
     {
       "symbol": "VOO",
       "name": "VANGUARD S&P 500 ETF",
       "assetClass": "ETF",
       "sector": "US Large Cap ETF",
-      "unrealizedPnlPct": 15.8,
-      "weight": 28.79
+      "unrealizedPnlPct": 16.25,
+      "weight": 28.68
     }
   ],
   "equity": [
