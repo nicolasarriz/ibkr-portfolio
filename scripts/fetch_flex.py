@@ -38,6 +38,10 @@ FLEX_REQUEST_URL = "https://gdcdyn.interactivebrokers.com/Universal/servlet/Flex
 FLEX_STATEMENT_URL = "https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.GetStatement"
 TRADING_DAYS = 252
 
+# Equity-curve reconstruction (holdings' real prices, Yahoo)
+PRICE_RANGE = "1y"
+DEFAULT_START = "2026-03-04"  # inception of the book
+
 
 def http_get(url: str, params: dict) -> bytes:
     qs = urllib.parse.urlencode(params)
@@ -196,6 +200,52 @@ def fetch_benchmark(dates: list, symbol: str = BENCHMARK_SYMBOL) -> list:
     return [{"date": d, "index": round(c / base * 100, 2)} for d, c in aligned if base]
 
 
+def fetch_prices(symbol: str) -> dict:
+    """Daily closes for a symbol from Yahoo, keyed by ISO date."""
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?range={PRICE_RANGE}&interval=1d"
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        j = json.loads(r.read())
+    res = j["chart"]["result"][0]
+    ts = res["timestamp"]
+    closes = res["indicators"]["quote"][0]["close"]
+    out = {}
+    for t, c in zip(ts, closes):
+        if c is not None:
+            out[dt.datetime.utcfromtimestamp(t).date().isoformat()] = c
+    return out
+
+
+def build_equity(holdings: list, anchor_index: float, start: str) -> list:
+    """Reconstruct the indexed equity curve from inception to the latest trading
+    day as a buy-and-hold index of the *current* holdings, using their real daily
+    prices (Yahoo) weighted by current portfolio weight. The daily SHAPE comes
+    from real market moves; the curve is linearly scaled so start=100 and today=
+    anchor_index (the account's real total return), so it never overstates."""
+    prices = {}
+    for h in holdings:
+        prices[h["symbol"]] = fetch_prices(h["symbol"])
+    # Common trading dates across every holding (avoids gaps), from inception on
+    common = None
+    for p in prices.values():
+        common = set(p) if common is None else (common & set(p))
+    dates = sorted(d for d in (common or []) if d >= start)
+    if len(dates) < 2:
+        return []
+    t0 = dates[0]
+    weights = {h["symbol"]: h["weight"] / 100.0 for h in holdings}
+
+    raw = [(d, sum(weights[s] * (prices[s][d] / prices[s][t0]) for s in prices)) for d in dates]
+    period_ret = raw[-1][1] - 1.0          # holdings' return over the window (fraction)
+    target_total = anchor_index - 100.0    # account's real total return (pct)
+
+    if period_ret > 0:
+        k = target_total / (period_ret * 100.0)
+        return [{"date": d, "index": round(100.0 + (bf - 1.0) * 100.0 * k, 2)} for d, bf in raw]
+    bf_today = raw[-1][1] or 1.0
+    return [{"date": d, "index": round(anchor_index * bf / bf_today, 2)} for d, bf in raw]
+
+
 def risk_from_index(index_series: list) -> dict:
     """Annualized risk measures from an index series [{date, index}]."""
     vals = [p["index"] for p in index_series]
@@ -225,6 +275,8 @@ def parse(xml_bytes: bytes) -> dict:
 
     # --- Holdings (anonymized: only return % and weight) -------------------
     raw = []
+    total_cost = 0.0
+    total_mv_signed = 0.0
     for p in root.iter("OpenPosition"):
         qty = f(p, "position")
         if qty == 0:
@@ -232,6 +284,8 @@ def parse(xml_bytes: bytes) -> dict:
         avg_cost = f(p, "costBasisPrice")
         last = f(p, "markPrice")
         mv = f(p, "positionValue") or qty * last
+        total_cost += avg_cost * qty
+        total_mv_signed += mv
         u_pnl_pct = ((last / avg_cost) - 1) * 100 if avg_cost else 0.0
         symbol = s(p, "symbol")
         sub_cat = s(p, "subCategory")
@@ -290,13 +344,17 @@ def parse(xml_bytes: bytes) -> dict:
         if base:
             monthly.append({"month": ym, "returnPct": round(monthly_pnl[ym] / base * 100, 2)})
 
+    # Real total return of the book vs cost basis (used to anchor the curve)
+    book_return_pct = (total_mv_signed / total_cost - 1) * 100 if total_cost else 0.0
+
     return {
         "lastUpdated": dt.datetime.utcnow().replace(microsecond=0).isoformat() + "Z",
         "baseCurrency": "USD",
         "holdings": holdings,
         "equity": equity,
         "monthly": monthly,
-        "_navSeries": nav_series,  # internal only — stripped before writing
+        "_navSeries": nav_series,      # internal only — stripped before writing
+        "_bookReturnPct": book_return_pct,  # internal only
     }
 
 
@@ -335,6 +393,7 @@ def merge_history(data: dict, existing_path: str) -> dict:
 def finalize(data: dict) -> dict:
     """Compute index/return headline + risk, strip internal NAV fields."""
     data.pop("_navSeries", None)
+    data.pop("_bookReturnPct", None)
     eq = data.get("equity") or []
     latest = eq[-1]["index"] if eq else 100.0
     data["index"] = round(latest, 2)
@@ -375,6 +434,22 @@ def main():
 
     out = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "portfolio.json"))
     data = merge_history(data, out)
+
+    # Extend the indexed equity curve to the latest trading day. IBKR's Flex NAV
+    # history (EquitySummaryByReportDateInBase) is not available in this feed, so
+    # the curve is reconstructed daily from the current holdings' real prices
+    # (Yahoo), anchored to the book's real total return. Falls back to the merged
+    # NAV/backfill curve if the reconstruction can't fetch prices.
+    anchor = 100.0 + data.get("_bookReturnPct", 0.0)
+    start = os.environ.get("BACKFILL_START", DEFAULT_START)
+    try:
+        rebuilt = build_equity(data.get("holdings", []), anchor, start)
+        if rebuilt:
+            data["equity"] = rebuilt
+        else:
+            print("equity rebuild produced no points; keeping prior curve", file=sys.stderr)
+    except Exception as exc:
+        print(f"equity rebuild skipped: {exc}", file=sys.stderr)
 
     # S&P 500 benchmark (best-effort; keep previous on failure)
     dates = [p["date"] for p in data.get("equity", [])]
