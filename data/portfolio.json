@@ -1,14 +1,14 @@
 {
-  "lastUpdated": "2026-06-17T23:56:19Z",
+  "lastUpdated": "2026-06-19T00:08:47Z",
   "baseCurrency": "USD",
-  "index": 116.06,
-  "totalReturnPct": 16.06,
-  "dayReturnPct": -0.77,
-  "ytdReturnPct": 16.06,
+  "index": 115.0,
+  "totalReturnPct": 15.0,
+  "dayReturnPct": 1.29,
+  "ytdReturnPct": 15.0,
   "risk": {
-    "maxDrawdownPct": -7.82,
-    "volatilityPct": 19.82,
-    "sharpe": 2.7
+    "maxDrawdownPct": -6.53,
+    "volatilityPct": 16.71,
+    "sharpe": 2.94
   },
   "holdings": [
     {
@@ -16,15 +16,15 @@
       "name": "ALPHABET INC-CL A",
       "assetClass": "Equity",
       "sector": "Communication Services",
-      "unrealizedPnlPct": 26.96,
-      "weight": 15.46
+      "unrealizedPnlPct": 23.75,
+      "weight": 15.21
     },
     {
       "symbol": "IGM",
       "name": "ISHARES EXPANDED TECH SECTOR",
       "assetClass": "ETF",
       "sector": "Tech Sector ETF",
-      "unrealizedPnlPct": 25.36,
+      "unrealizedPnlPct": 24.51,
       "weight": 3.34
     },
     {
@@ -32,48 +32,48 @@
       "name": "JPMORGAN CHASE & CO",
       "assetClass": "Equity",
       "sector": "Financials",
-      "unrealizedPnlPct": 12.14,
-      "weight": 13.72
+      "unrealizedPnlPct": 12.93,
+      "weight": 13.94
     },
     {
       "symbol": "MAGS",
       "name": "ROUNDHILL MAGNIFICENT SEVEN",
       "assetClass": "ETF",
       "sector": "Mega Cap Tech ETF",
-      "unrealizedPnlPct": 9.69,
-      "weight": 5.5
+      "unrealizedPnlPct": 6.58,
+      "weight": 5.4
     },
     {
       "symbol": "PLTR",
       "name": "PALANTIR TECHNOLOGIES INC-A",
       "assetClass": "Equity",
       "sector": "Technology",
-      "unrealizedPnlPct": -9.69,
-      "weight": 5.52
+      "unrealizedPnlPct": -11.46,
+      "weight": 5.46
     },
     {
       "symbol": "QQQ",
       "name": "INVESCO QQQ TRUST SERIES 1",
       "assetClass": "ETF",
       "sector": "US Large Cap ETF",
-      "unrealizedPnlPct": 26.87,
-      "weight": 15.12
+      "unrealizedPnlPct": 25.6,
+      "weight": 15.11
     },
     {
       "symbol": "SMH",
       "name": "VANECK SEMICONDUCTOR ETF",
       "assetClass": "ETF",
       "sector": "Semiconductor ETF",
-      "unrealizedPnlPct": 13.58,
-      "weight": 12.76
+      "unrealizedPnlPct": 15.05,
+      "weight": 13.05
     },
     {
       "symbol": "VOO",
       "name": "VANGUARD S&P 500 ETF",
       "assetClass": "ETF",
       "sector": "US Large Cap ETF",
-      "unrealizedPnlPct": 15.2,
-      "weight": 28.58
+      "unrealizedPnlPct": 13.8,
+      "weight": 28.49
     }
   ],
   "equity": [
@@ -83,295 +83,299 @@
     },
     {
       "date": "2026-03-05",
-      "index": 99.33
+      "index": 99.44
     },
     {
       "date": "2026-03-06",
-      "index": 98.04
+      "index": 98.35
     },
     {
       "date": "2026-03-09",
-      "index": 99.34
+      "index": 99.44
     },
     {
       "date": "2026-03-10",
-      "index": 99.21
+      "index": 99.33
     },
     {
       "date": "2026-03-11",
-      "index": 99.36
+      "index": 99.45
     },
     {
       "date": "2026-03-12",
-      "index": 97.79
+      "index": 98.14
     },
     {
       "date": "2026-03-13",
-      "index": 97.31
+      "index": 97.74
     },
     {
       "date": "2026-03-16",
-      "index": 98.37
+      "index": 98.63
     },
     {
       "date": "2026-03-17",
-      "index": 99.0
+      "index": 99.15
     },
     {
       "date": "2026-03-18",
-      "index": 98.05
+      "index": 98.36
     },
     {
       "date": "2026-03-19",
-      "index": 98.01
+      "index": 98.33
     },
     {
       "date": "2026-03-20",
-      "index": 96.39
+      "index": 96.98
     },
     {
       "date": "2026-03-23",
-      "index": 97.66
-    },
-    {
-      "date": "2026-03-24",
-      "index": 96.83
-    },
-    {
-      "date": "2026-03-25",
-      "index": 97.4
-    },
-    {
-      "date": "2026-03-26",
-      "index": 94.94
-    },
-    {
-      "date": "2026-03-27",
-      "index": 92.95
-    },
-    {
-      "date": "2026-03-30",
-      "index": 92.18
-    },
-    {
-      "date": "2026-03-31",
-      "index": 95.68
-    },
-    {
-      "date": "2026-04-01",
-      "index": 96.93
-    },
-    {
-      "date": "2026-04-02",
-      "index": 96.93
-    },
-    {
-      "date": "2026-04-06",
-      "index": 97.47
-    },
-    {
-      "date": "2026-04-07",
       "index": 98.04
     },
     {
+      "date": "2026-03-24",
+      "index": 97.36
+    },
+    {
+      "date": "2026-03-25",
+      "index": 97.83
+    },
+    {
+      "date": "2026-03-26",
+      "index": 95.78
+    },
+    {
+      "date": "2026-03-27",
+      "index": 94.12
+    },
+    {
+      "date": "2026-03-30",
+      "index": 93.47
+    },
+    {
+      "date": "2026-03-31",
+      "index": 96.4
+    },
+    {
+      "date": "2026-04-01",
+      "index": 97.44
+    },
+    {
+      "date": "2026-04-02",
+      "index": 97.44
+    },
+    {
+      "date": "2026-04-06",
+      "index": 97.89
+    },
+    {
+      "date": "2026-04-07",
+      "index": 98.37
+    },
+    {
       "date": "2026-04-08",
-      "index": 100.7
+      "index": 100.6
     },
     {
       "date": "2026-04-09",
-      "index": 101.06
+      "index": 100.91
     },
     {
       "date": "2026-04-10",
-      "index": 101.15
+      "index": 100.99
     },
     {
       "date": "2026-04-13",
-      "index": 102.37
+      "index": 102.01
     },
     {
       "date": "2026-04-14",
-      "index": 103.97
+      "index": 103.34
     },
     {
       "date": "2026-04-15",
-      "index": 104.8
+      "index": 104.03
     },
     {
       "date": "2026-04-16",
-      "index": 105.17
+      "index": 104.33
     },
     {
       "date": "2026-04-17",
-      "index": 106.52
+      "index": 105.46
     },
     {
       "date": "2026-04-20",
-      "index": 106.42
+      "index": 105.39
     },
     {
       "date": "2026-04-21",
-      "index": 105.75
+      "index": 104.83
     },
     {
       "date": "2026-04-22",
-      "index": 107.37
+      "index": 106.18
     },
     {
       "date": "2026-04-23",
-      "index": 106.73
+      "index": 105.66
     },
     {
       "date": "2026-04-24",
-      "index": 108.32
+      "index": 106.99
     },
     {
       "date": "2026-04-27",
-      "index": 108.84
+      "index": 107.42
     },
     {
       "date": "2026-04-28",
-      "index": 107.92
+      "index": 106.65
     },
     {
       "date": "2026-04-29",
-      "index": 108.07
+      "index": 106.78
     },
     {
       "date": "2026-04-30",
-      "index": 110.57
+      "index": 108.85
     },
     {
       "date": "2026-05-01",
-      "index": 111.17
+      "index": 109.35
     },
     {
       "date": "2026-05-04",
-      "index": 110.7
+      "index": 108.95
     },
     {
       "date": "2026-05-05",
-      "index": 111.65
+      "index": 109.76
     },
     {
       "date": "2026-05-06",
-      "index": 113.99
+      "index": 111.72
     },
     {
       "date": "2026-05-07",
-      "index": 113.35
+      "index": 111.18
     },
     {
       "date": "2026-05-08",
-      "index": 114.89
+      "index": 112.47
     },
     {
       "date": "2026-05-11",
-      "index": 114.6
+      "index": 112.24
     },
     {
       "date": "2026-05-12",
-      "index": 114.01
+      "index": 111.75
     },
     {
       "date": "2026-05-13",
-      "index": 115.16
+      "index": 112.7
     },
     {
       "date": "2026-05-14",
-      "index": 115.8
+      "index": 113.23
     },
     {
       "date": "2026-05-15",
-      "index": 114.1
+      "index": 111.81
     },
     {
       "date": "2026-05-18",
-      "index": 113.81
+      "index": 111.56
     },
     {
       "date": "2026-05-19",
-      "index": 112.71
+      "index": 110.64
     },
     {
       "date": "2026-05-20",
-      "index": 114.43
+      "index": 112.1
     },
     {
       "date": "2026-05-21",
-      "index": 114.63
+      "index": 112.27
     },
     {
       "date": "2026-05-22",
-      "index": 114.99
+      "index": 112.58
     },
     {
       "date": "2026-05-26",
-      "index": 116.65
+      "index": 113.97
     },
     {
       "date": "2026-05-27",
-      "index": 116.02
+      "index": 113.44
     },
     {
       "date": "2026-05-28",
-      "index": 116.87
+      "index": 114.15
     },
     {
       "date": "2026-05-29",
-      "index": 117.12
+      "index": 114.36
     },
     {
       "date": "2026-06-01",
-      "index": 117.41
+      "index": 114.61
     },
     {
       "date": "2026-06-02",
-      "index": 117.46
+      "index": 114.68
     },
     {
       "date": "2026-06-03",
-      "index": 116.8
+      "index": 114.14
     },
     {
       "date": "2026-06-04",
-      "index": 117.56
+      "index": 114.76
     },
     {
       "date": "2026-06-05",
-      "index": 113.47
+      "index": 111.32
     },
     {
       "date": "2026-06-08",
-      "index": 114.44
+      "index": 112.15
     },
     {
       "date": "2026-06-09",
-      "index": 113.79
+      "index": 111.6
     },
     {
       "date": "2026-06-10",
-      "index": 111.61
+      "index": 109.78
     },
     {
       "date": "2026-06-11",
-      "index": 114.24
+      "index": 111.99
     },
     {
       "date": "2026-06-12",
-      "index": 115.12
+      "index": 112.75
     },
     {
       "date": "2026-06-15",
-      "index": 117.87
+      "index": 115.04
     },
     {
       "date": "2026-06-16",
-      "index": 116.96
+      "index": 114.27
     },
     {
       "date": "2026-06-17",
-      "index": 116.06
+      "index": 113.53
+    },
+    {
+      "date": "2026-06-18",
+      "index": 115.0
     }
   ],
   "benchmark": [
@@ -670,6 +674,10 @@
     {
       "date": "2026-06-17",
       "index": 108.02
+    },
+    {
+      "date": "2026-06-18",
+      "index": 109.19
     }
   ],
   "monthly": [
